@@ -1,0 +1,47 @@
+[
+    {
+        "values": [
+            {
+                "kind": "ensemble",
+                "cfg_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
+                "space_size": "48",
+                "time_size": "96",
+                "beta": "-0.2416",
+                "light_mass": "-0.2416",
+                "strange_mass": "-0.2050",
+                "clover": "1.20536588031793",
+                "smear_fact": "0.08",
+                "smear_num": "10",
+                "default_num_vecs": "128",
+                "eig_knl_geom": "2 2 1 1",
+                "prop_knl_geom": "1 2 2 2",
+                "prop_knl_solver": "MG",
+                "prop_knl_mg_solver": "MGPROTO-MG",
+                "prop_knl_mg_params": "AntiPeriodicT=True;MGLevels=3;Blocking=4,4,3,3:2,2,2,2;NullVecs=24:32;NullSolverMaxIters=800:800;NullSolverRsdTarget=5e-6:5e-6;OuterSolverNKrylov=5;OuterSolverRsdTarget=1.0e-7;OuterSolverVerboseP=True;VCyclePreSmootherMaxIters=0:0;VCyclePreSmootherRsdTarget=0.0:0.0;VCyclePostSmootherNKrylov=4:4;VCyclePostSmootherMaxIters=8:13;VCyclePostSmootherRsdTarget=0.06:0.06;VCycleBottomSolverMaxIters=100:100;VCycleBottomSolverNKrylov=8:8;VCycleBottomSolverRsdTarget=0.06:0.06",
+                "prop_32cpu_geom": "1 2 2 2",
+                "prop_32cpu_num_nodes": "2",
+                "prop_32cpu_solver": "MG",
+                "prop_32cpu_mg_solver": "MGPROTO-MG",
+                "prop_32cpu_mg_params": "AntiPeriodicT=True;MGLevels=3;Blocking=4,4,4,4:2,2,2,2;NullVecs=24:32;NullSolverMaxIters=800:800;NullSolverRsdTarget=5e-6:5e-6;OuterSolverNKrylov=5;OuterSolverRsdTarget=1.0e-7;OuterSolverVerboseP=True;VCyclePreSmootherMaxIters=0:0;VCyclePreSmootherRsdTarget=0.0:0.0;VCyclePostSmootherNKrylov=4:4;VCyclePostSmootherMaxIters=8:13;VCyclePostSmootherRsdTarget=0.06:0.06;VCycleBottomSolverMaxIters=100:100;VCycleBottomSolverNKrylov=8:8;VCycleBottomSolverRsdTarget=0.06:0.06",
+                "prop_4V100_geom": "2 4 2 8",
+                "prop_4V100_solver": "MG",
+                "prop_4V100_mg_solver": "QUDA-MG",
+                "prop_4V100_mg_params": "RsdTarget=1.0e-7;AntiPeriodicT=True;SolverType=GCR;Blocking=3,3,4,4:2,2,2,2;NullVectors=24:32;SmootherType=CA_GCR:CA_GCR:CA_GCR;SmootherTol=0.25:0.25:0.25;CoarseSolverType=GCR:CA_GCR;CoarseResidual=0.1:0.1:0.1;Pre-SmootherApplications=0:0;Post-SmootherApplications=8:8;SubspaceSolver=CG:CG;RsdTargetSubspaceCreate=5e-06:5e-06",
+                "gprop_knl_geom": "3 3 4 8",
+                "gprop_knl_solver": "MG",
+                "gprop_knl_mg_solver": "MGPROTO-MG",
+                "gprop_knl_mg_params": "AntiPeriodicT=True;MGLevels=3;Blocking=4,4,3,3:2,2,2,2;NullVecs=24:32;NullSolverMaxIters=800:800;NullSolverRsdTarget=5e-6:5e-6;OuterSolverNKrylov=5;OuterSolverRsdTarget=1.0e-7;OuterSolverVerboseP=True;VCyclePreSmootherMaxIters=0:0;VCyclePreSmootherRsdTarget=0.0:0.0;VCyclePostSmootherNKrylov=4:4;VCyclePostSmootherMaxIters=8:13;VCyclePostSmootherRsdTarget=0.06:0.06;VCycleBottomSolverMaxIters=100:100;VCycleBottomSolverNKrylov=8:8;VCycleBottomSolverRsdTarget=0.06:0.06",
+                "gprop_32cpu_geom": "3 3 4 8",
+                "gprop_32cpu_num_nodes": "48",
+                "gprop_32cpu_solver": "MG",
+                "gprop_32cpu_mg_solver": "MGPROTO-MG",
+                "gprop_32cpu_mg_params": "AntiPeriodicT=True;MGLevels=3;Blocking=4,4,4,4:2,2,2,2;NullVecs=24:32;NullSolverMaxIters=800:800;NullSolverRsdTarget=5e-6:5e-6;OuterSolverNKrylov=5;OuterSolverRsdTarget=1.0e-7;OuterSolverVerboseP=True;VCyclePreSmootherMaxIters=0:0;VCyclePreSmootherRsdTarget=0.0:0.0;VCyclePostSmootherNKrylov=4:4;VCyclePostSmootherMaxIters=8:13;VCyclePostSmootherRsdTarget=0.06:0.06;VCycleBottomSolverMaxIters=100:100;VCycleBottomSolverNKrylov=8:8;VCycleBottomSolverRsdTarget=0.06:0.06",
+                "gprop_4V100_geom": "2 4 2 8",
+                "gprop_4V100_solver": "MG",
+                "gprop_4V100_mg_solver": "QUDA-MG",
+                "gprop_4V100_mg_params": "RsdTarget=1.0e-7;AntiPeriodicT=True;SolverType=GCR;Blocking=3,3,4,4:2,2,2,2;NullVectors=24:32;SmootherType=CA_GCR:CA_GCR:CA_GCR;SmootherTol=0.25:0.25:0.25;CoarseSolverType=GCR:CA_GCR;CoarseResidual=0.1:0.1:0.1;Pre-SmootherApplications=0:0;Post-SmootherApplications=8:8;SubspaceSolver=CG:CG;RsdTargetSubspaceCreate=5e-06:5e-06"
+            }
+        ],
+        "id": "ensemble-{cfg_name}"
+    }
+]
