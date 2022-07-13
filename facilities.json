@@ -1,0 +1,38 @@
+[
+    {
+        "values": [
+            {
+                "facility": "jz-gpu",
+                "proc_type": "4V100",
+                "num_cores": "32",
+                "eig_max_job_bundling": "1",
+                "prop_max_job_bundling": "1",
+                "gprop_max_job_bunding": "1",
+                "max_nodes_per_job": "999999",
+                "shell": "bash",
+                "use_slurm_array": "yes",
+                "chroma_env": "",
+                "chroma_srun": "",
+                "chroma_bin": "",
+                "chroma_extra_args": "",
+                "sbatch_extra": ""
+            },
+            {
+                "facility": "cori-knl",
+                "proc_type": "knl",
+                "eig_max_job_bundling": "1",
+                "prop_max_job_bundling": "99999",
+                "gprop_max_job_bunding": "99999",
+                "max_nodes_per_job": "1100",
+                "shell": "bash",
+                "use_slurm_array": "yes",
+                "chroma_env": "",
+                "chroma_srun": "",
+                "chroma_bin": "",
+                "chroma_extra_args": "",
+                "sbatch_extra": ""
+            }
+        ],
+        "id": "facility-{facility}"
+    }
+]
