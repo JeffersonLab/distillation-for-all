@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 KAON: KhAOs Nemesis
 
@@ -223,7 +224,7 @@ def execute_schema(schema, view):
             else:
                 artifacts[the_id] = artifact
 
-    return artifacts.values()
+    return list(artifacts.values())
 
 
 def apply_defaults(artifacts, defaults):
@@ -334,22 +335,47 @@ def get_schema_from_json(json_files):
         except Exception as e:
             raise ValueError("KaoN schema error in file {}:" + str(e))
         f.close()
-        schema.extend(schema_items)
+        schema.extend(schema_item)
     return schema
 
 
-def print_artifacts_as_table(artifacts, output_attributes, print_headers):
+# Internal attributes that are not interesting in outputs
+ignore_attributes = ["option-name", "option-doc"]
+
+
+def restrict_output_attributes(artifacts, output_attributes, ignore_doc_attributes=True):
+    """
+    Return a list of nonempty entries to print.
+    """
+
+    if output_attributes is not None:
+        output_artifacts = []
+        for artifact in artifacts:
+            output_artifact = dict([(k, v) for k, v in artifact.items() if k in output_attributes])
+            if output_artifact:
+                output_artifacts.append(output_artifact)
+    elif ignore_doc_attributes:
+        output_artifacts = []
+        for artifact in artifacts:
+            output_artifact = dict([(k, v)
+                                    for k, v in artifact.items() if k not in ignore_attributes])
+            if output_artifact:
+                output_artifacts.append(output_artifact)
+    else:
+        output_artifacts = artifacts
+    return output_artifacts
+
+
+def print_artifacts_as_table(artifacts, output_attributes, print_headers, column_separator):
     """
     Print a list of dictionaries each of them in a single line. Filter the properties to show in
     each artifact.
     """
 
-    if output_attributes is not None:
-        artifacts = [
-            dict([(k, v) for k, v in artifact.items() if k in output_attributes])
-            for artifact in artifacts]
-    else:
-        output_attributes = list(set([k for artifact in artifacts for k in artifact.keys()]))
+    artifacts = restrict_output_attributes(artifacts, output_attributes)
+    if output_attributes is None:
+        output_attributes = list(
+            set([k for artifact in artifacts for k in artifact.keys() if k not in ignore_attributes]))
 
     table = [
         [artifact[k] if k in artifact else "_null_" for k in output_attributes]
@@ -359,11 +385,11 @@ def print_artifacts_as_table(artifacts, output_attributes, print_headers):
 
     column_lengths = [0 for _ in range(len(output_attributes))]
     for row in table:
-        column_lenghts = [max(len(attr), max_col_len)
+        column_lengths = [max(len(attr), max_col_len)
                           for attr, max_col_len in zip(row, column_lengths)]
 
-    print("\n".join([" ".join([v.ljust(col_len)
-                               for v, col_len in zip(row, column_lengths)]) for row in table]))
+    print("\n".join([column_separator.join([v.ljust(col_len)
+                                            for v, col_len in zip(row, column_lengths)]) for row in table]))
 
 
 def print_artifacts_as_json(artifacts, output_attributes):
@@ -372,10 +398,7 @@ def print_artifacts_as_json(artifacts, output_attributes):
     each artifact.
     """
 
-    if output_attributes is not None:
-        artifacts = [
-            dict([(k, v) for k, v in artifact.items() if k in output_attributes])
-            for artifact in artifacts]
+    artifacts = restrict_output_attributes(artifacts, output_attributes)
     json.dump(artifacts, sys.stdout, indent=4, sort_keys=True)
 
 
@@ -385,10 +408,8 @@ def print_artifacts_as_schema(artifacts, output_attributes):
     each artifact.
     """
 
-    if output_attributes is not None:
-        artifacts = [
-            dict([(k, v) for k, v in artifact.items() if k in output_attributes])
-            for artifact in artifacts]
+    artifacts = restrict_output_attributes(
+        artifacts, output_attributes, ignore_doc_attributes=False)
     schema = [{'values': artifacts}]
     json.dump(schema, sys.stdout, indent=4, sort_keys=True)
 
@@ -406,7 +427,7 @@ def get_options_from_schema(schema):
         [(entry['option-name'],
           entry['option-doc']) for action in schema
          if 'values' in action for entry in action['values']
-         if "option_name" in entry and "option_doc" in entry])
+         if "option-name" in entry and "option-doc" in entry])
 
 
 def normalize_value_constrain(values):
@@ -462,13 +483,12 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     # that describe arguments
     parser = argparse.ArgumentParser(
         description=prog_description,
-        epilog=value_constraints_and_examples,
-        add_help=False,
-        exit_on_error=False)
-    parser.add_argument('inputs', metavar='file', nargs='+',
+        epilog=value_constraints_and_examples, formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False)
+    parser.add_argument('inputs', metavar='file', nargs='*',
                         help="KaoN schema file, use - to read it from the standard input")
     parser.add_argument('--help', '-h', help='Show help', action='store_true',
-                        nargs=0, default=False, required=False)
+                        default=False, required=False)
     try:
         args = parser.parse_known_args()
     except Exception as e:
@@ -476,8 +496,15 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
         parser.print_help()
         sys.exit(1)
 
+    if "inputs" not in args[0] or not args[0].inputs:
+        help = args[0].help if "help" in args[0] else False
+        if not help:
+            print("Invalid arguments")
+        parser.print_help()
+        sys.exit(0 if help else 1)
+
     # Read schemas
-    schema = get_schema_from_json(args.inputs)
+    schema = get_schema_from_json(args[0].inputs)
 
     # Get options and documentation from the values of the schema
     attribute_options = get_options_from_schema(schema)
@@ -491,24 +518,29 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
         attributes_str)
     parser.add_argument(
         '--output-format', dest='output_format', nargs=1, required=False,
-        choices=['table', 'headless-table', 'json', 'schema'],
-        default='table',
+        choices=['headless-table', 'table', 'json', 'schema'],
+        default='headless-table',
         help='how to print the artifacts, in table form with headers (table) '
         'or without headers (headless-table), in a list of dictionaries (json), '
         'or as KaoN schema (schema)')
+    parser.add_argument(
+        '--column-sep', metavar='<sep>', nargs=1, required=False,
+        help='column separation when printing a table', default=[' '])
     group_attributes = parser.add_argument_group('Options for attributes')
     for k, v in attribute_options.items():
-        group_attributes.add_arguemnt(
-            '--' + k, nargs='+', required=False, default=None, help=v)
+        group_attributes.add_argument(
+            '--' + k, nargs='+', required=False, help=v, metavar='value')
 
     args = parser.parse_args()
-
     # Show help
+    if args.help:
+        parser.print_help()
+        sys.exit(0)
 
     # Create a view with all the constrains
     view = {}
-    for k, v in vars(args):
-        if k not in attribute_options:
+    for k, v in vars(args).items():
+        if v is None or k not in attribute_options:
             continue
         view[k] = normalize_value_constrain(v)
 
@@ -517,9 +549,11 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
 
     # Print the results
     output_attributes = args.show
-    output_format = args.output_format
-    if output_fomrat in ['table', 'headless-table']:
-        print_artifacts_as_table(artifacts, output_attributes, output_format == 'table')
+    output_format = args.output_format[0]
+    column_separator = args.column_sep[0]
+    if output_format in ['table', 'headless-table']:
+        print_artifacts_as_table(artifacts, output_attributes,
+                                 output_format == 'table', column_separator)
     elif output_format == 'json':
         print_artifacts_as_json(artifacts, output_attributes)
     else:
@@ -575,7 +609,7 @@ def do_test():
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == '--test':
+    if len(sys.argv) >= 2 and sys.argv[1] == '--test':
         do_test()
     else:
         process_args()
