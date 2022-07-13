@@ -1,14 +1,6 @@
 #!/bin/bash
 
-# JLab endpoing
-export THIS_FACILITY="jz"
-# Path in the facility to store configuration, eigenvectors, ...
-export LOCAL_CACHE=/scratch/whatever
-# Path in the facility to store SLURM scripts, XML, and output
-export LOCAL_RUN=$PWD/runs
-# Path to remote promises
-export REMOTE_PROMISES=$PWD/runs
-# Maximum number of files promised to be computed in this facility at a time
+. env.sh
 
 cat > streams.json << EOF
 [
@@ -176,41 +168,46 @@ cat > artifacts.json << EOF
 ]
 EOF
 
+cat << EOF > goals.json
+[{
+    "cfg_dir":"cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs",
+    "cfg_num":"1:1000",
+    "kind": ["configuration", "eigenvector"]
+}]
+EOF
 #
 # Compute the missing eigenvectors
 #
 
 # Set scope, work with configurations and eigenvector from a stream and a range of trajectories
-scope="ensemble.json artifacts.json --cfg_dir cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs --cfg_num 1:1000 --kind configuration eigenvector"
+scope="ensemble.json artifacts.json --constrains goals.json "
 
 # Iteratively run the following steps until the number of configuration without an eigenvector is zero
 while true ; do
-	cat goals.txt | while read scope ; do
-		# a) Capture all information about the goals
-		./kaon.py $scope --output-format schema > scope.json
+	# a) Capture all information about the goals
+	./kaon.py $scope --output-format schema > scope.json
 
-		# b) Copy back configurations and eigenvectors that are not at jlab's tape
-		./kaon.py scope.json --cfg_file_remote_status promised none --cfg_file_status "local" --show cfg_file | kaon-remote-cp.sh here jlab
-		./kaon.py scope.json --eig_file_remote_status promised none --eig_file_status "local" --show eig_file | kaon-remote-cp.sh here jlab
+	# b) Copy back configurations and eigenvectors that are not at jlab's tape
+	./kaon.py scope.json --cfg_file_remote_status promised none --cfg_file_status "local" --show cfg_file | kaon-remote-cp.sh here jlab
+	./kaon.py scope.json --eig_file_remote_status promised none --eig_file_status "local" --show eig_file | kaon-remote-cp.sh here jlab
 
-		# b) Remove promises for local eigenvectors that are at jlab
-		./kaon.py scope.json --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status "local" --show eig_file | kaon-rm-promise.sh
+	# b) Remove promises for local eigenvectors that are at jlab
+	./kaon.py scope.json --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status "local" --show eig_file | kaon-rm-promise.sh
 
-		# c) Promise up to some number of eigenvectors to compute
-		num_promises="`./kaon.py scope.json --eig_file_promiser $THIS_FACILITY --show eig_file | wc -l`"
-		if [ $num_promises -lt $max_promises ]; then
-			./kaon.py scope.json --eig_file_remote_status none --eig_file_status none --show eig_file | head -$(( max_promises - num_promises )) | kaon-promise.sh
-		fi
+	# c) Promise up to some number of eigenvectors to compute
+	num_promises="`./kaon.py scope.json --eig_file_promiser $THIS_FACILITY --show eig_file | wc -l`"
+	if [ $num_promises -lt $max_promises ]; then
+		./kaon.py scope.json --eig_file_remote_status none --eig_file_status none --show eig_file | head -$(( max_promises - num_promises )) | kaon-promise.sh
+	fi
 
-		# d) Bring to cache configurations that doesn't have an eigenvector file associated and are on tape
-		./kaon.py scope.json --cfg_file_remote_status tape --cfg_file_status none --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file | kaon-get-from-tape-remote.sh
-		
-		# e) Bring to this facility configurations that doesn't have an eigenvector file associated and are on cache at jlab
-		./kaon.py scope.json --cfg_file_remote_status cache --cfg_file_status none --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file | kaon-remote-cp.sh jlab here
-		
-		# f) Create eigenvectors from configurations that are local and doesn't have an eigenvector file associated
-		./kaon.py scope.json --cfg_file_status "local" --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file smear_fact smear_num default_vecs eig_default_file --output-format schema | launch-eigs.sh
-	done	
+	# d) Bring to cache configurations that doesn't have an eigenvector file associated and are on tape
+	./kaon.py scope.json --cfg_file_remote_status tape --cfg_file_status none --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file | kaon-get-from-tape-remote.sh
+	
+	# e) Bring to this facility configurations that doesn't have an eigenvector file associated and are on cache at jlab
+	./kaon.py scope.json --cfg_file_remote_status cache --cfg_file_status none --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file | kaon-remote-cp.sh jlab here
+	
+	# f) Create eigenvectors from configurations that are local and doesn't have an eigenvector file associated
+	./kaon.py scope.json --cfg_file_status "local" --eig_file_remote_status promised --eig_file_promiser $THIS_FACILITY --eig_file_status none --show cfg_file smear_fact smear_num default_vecs eig_default_file --output-format schema | launch-eigs.sh
 
 	# Wait a bit, pal, things move slowly and we don't need to react at every second
 	sleep $(( 30 * 60 ))
