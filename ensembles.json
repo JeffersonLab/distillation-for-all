@@ -2,6 +2,123 @@
     {
         "values": [
             {
+                "option-name": "kind",
+                "option-doc": "one of ensemble, configuration, eigenvector, propagator, genprop..."
+            },
+            {
+                "option-name": "cfg_name",
+                "option-doc": "ensemble name, which is common to all streams belonging to the same ensemble"
+            },
+            {
+                "option-name": "space_size",
+                "option-doc": "space lattice size"
+            },
+            {
+                "option-name": "time_size",
+                "option-doc": "time lattice size"
+            },
+            {
+                "option-name": "beta",
+                "option-doc": "beta"
+            },
+            {
+                "option-name": "light_mass",
+                "option-doc": "invertor shift for light propagator"
+            },
+            {
+                "option-name": "strange_mass",
+                "option-doc": "invertor shift for strange propagator"
+            },
+            {
+                "option-name": "clover",
+                "option-doc": "clover term for invertors"
+            },
+            {
+                "option-name": "smear_fact",
+                "option-doc": "smear factor used in computing the distillation basis"
+            },
+            {
+                "option-name": "smear_num",
+                "option-doc": "smear steps used in computing the distillation basis"
+            },
+            {
+                "option-name": "default_num_vecs",
+                "option-doc": "rank of the distillation basis"
+            },
+            {
+                "option-name": "eig_knl_geom",
+                "option-doc": "chroma geom option when computing eigenvectors in KNLs"
+            },
+            {
+                "option-name": "eig_knl_maxtime",
+                "option-doc": "job maximum time when computing eigenvectors in KNLs, in SLURM format, eg.  HH:MM:SS"
+            },
+            {
+                "option-name": "prop_knl_geom",
+                "option-doc": "chroma geom option when computing propagators in KNLs"
+            },
+            {
+                "option-name": "prop_knl_maxtime",
+                "option-doc": "job maximum time when computing propagators in KNLs, in SLURM format, eg.  HH:MM:SS"
+            },
+            {
+                "option-name": "prop_knl_solver",
+                "option-doc": "invertor type when computing propagators in KNL, one of MG, BiCGStab_chroma, or BiCGStab_qphix; see chroma_python's --solver_type option"
+            },
+            {
+                "option-name": "prop_knl_mg_solver",
+                "option-doc": "MG inverter implementation when computing propagators in KNL, one of QPHIX-MG or QUDA-MG; see chroma_python's --inverter_type option"
+            },
+            {
+                "option-name": "prop_knl_mg_parms",
+                "option-doc": "MG inverter options when computing propagators in KNL; see chroma_python's --mg_parameters option"
+            },
+            {
+                "option-name": "prop_32cpu_geom",
+                "option-doc": "chroma geom option when computing propagators in 32 core compatible CPU node"
+            },
+            {
+                "option-name": "prop_32cpu_maxtime",
+                "option-doc": "job maximum time when computing propagators in 32 core compatible CPU node, in SLURM format, eg.  HH:MM:SS"
+            },
+            {
+                "option-name": "prop_32cpu_solver",
+                "option-doc": "invertor type when computing propagators in 32 core compatible CPU node, one of MG, BiCGStab_chroma, or BiCGStab_qphix; see chroma_python's --solver_type option"
+            },
+            {
+                "option-name": "prop_32cpu_mg_solver",
+                "option-doc": "MG inverter implementation when computing propagators in 32 core compatible CPU node, one of QPHIX-MG or QUDA-MG; see chroma_python's --inverter_type option"
+            },
+            {
+                "option-name": "prop_32cpu_mg_parms",
+                "option-doc": "MG inverter options when computing propagators in 32 core compatible CPU node; see chroma_python's --mg_parameters option"
+            },
+            {
+                "option-name": "prop_4V100_geom",
+                "option-doc": "chroma geom option when computing propagators in 4 V100 nodes"
+            },
+            {
+                "option-name": "prop_4V100_maxtime",
+                "option-doc": "job maximum time when computing propagators in 4 V100 nodes, in SLURM format, eg.  HH:MM:SS"
+            },
+            {
+                "option-name": "prop_4V100_solver",
+                "option-doc": "invertor type when computing propagators in 4 V100 nodes, one of MG, BiCGStab_chroma, or BiCGStab_qphix; see chroma_python's --solver_type option"
+            },
+            {
+                "option-name": "prop_4V100_mg_solver",
+                "option-doc": "MG inverter implementation when computing propagators in 4 V100 nodes, one of QPHIX-MG or QUDA-MG; see chroma_python's --inverter_type option"
+            },
+            {
+                "option-name": "prop_4V100_mg_parms",
+                "option-doc": "MG inverter options when computing propagators in 4 V100 nodes; see chroma_python's --mg_parameters option"
+            }
+        ],
+        "id": "option-{option-name}"
+    },
+    {
+        "values": [
+            {
                 "kind": "ensemble",
                 "cfg_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
                 "space_size": "48",
