@@ -2,27 +2,31 @@
 
 # NOTE: style with four spaces indentation and 100 columns
 
-read -r -d '' hlp_msg << EOF
+read -r -d '' hlp_msg << 'EOF'
 Launch SLURM jobs.
 
 Usage:
 
   kaon-launch-jobs.sh
-EOF 
+EOF
 
-if [ ${1} == -h -o ${1} == --help ]; then
+if [ ${#*} -ge 1 ] && [ ${1} == -h -o ${1} == --help ]; then
     # Show help
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit
-elif [ ${#*} != 1 ]; then
+elif [ ${#*} != 0 ]; then
     echo "Invalid number of arguments"
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit 1
+fi
+
+if [ x${LOCAL_RUN}x == xx ]; then
+    echo "kaon-launch-jobs.sh: error, please set up LOCAL_RUN"
 fi
 
 # Group together all SLURM jobs with the same options
 t="`mktmep`"
-find ${LOCAL_RUNS} -name '*.sh' | while read f ; do
+find ${LOCAL_RUN} -name '*.sh' | while read f ; do
     [ -f ${f%.sh}.launched ] && continue
     slurm_ops="`grep "^#KAON_BATCH" $1`"
     slurm_ops="${slurm_ops#\#KAON_BATCH }"

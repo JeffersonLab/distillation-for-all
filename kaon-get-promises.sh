@@ -2,7 +2,7 @@
 
 # NOTE: style with four spaces indentation and 100 columns
 
-read -r -d '' hlp_msg << EOF
+read -r -d '' hlp_msg << 'EOF'
 Get all files being promised and the facility that made the promise
 
 Usage:
@@ -11,23 +11,27 @@ Usage:
 
 where:
 - <path> retstrict to find promises withing the path
-EOF 
+EOF
 
-if [ ${1} == -h -o ${1} == --help ]; then
+if [ ${#*} -ge 1 ] && [ ${1} == -h -o ${1} == --help ]; then
     # Show help
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit
-elif [ ${#*} != 2 ]; then
+elif [ ${#*} != 1 ]; then
     echo "Invalid number of arguments"
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit 1
+fi
+
+if [ x${JLAB_REMOTE_PROMISES_PATH}x == xx ]; then
+    echo "kaon-get-promises.sh: error, please set up JLAB_REMOTE_PROMISES_PATH"
 fi
 
 work="$1"
 
 buffer="$(( 60*60*24 ))"
 d="$(( `date +%s` - buffer ))"
-${JLAB_REMOTE} bash -c "[ -d /volatile/JLabLQCD/eromero/promises/${work} ] && find /volatile/JLabLQCD/eromero/promises/${work}" | while read file crap ; do
-	IFS="@" read filepath epoch promiser <<< "$file"
-	[ $epoch -ge $d ] && echo $filepath $promiser
+${JLAB_REMOTE} bash -c "[ -d ${JLAB_REMOTE_PROMISES_PATH}/${work} ] && find ${JLAB_REMOTE_PROMISES_PATH}/${work}" | while read file crap ; do
+    IFS="@" read filepath epoch promiser <<< "$file"
+    [ $epoch -ge $d ] && echo $filepath $promiser
 done

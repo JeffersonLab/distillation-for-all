@@ -2,7 +2,7 @@
 
 # NOTE: style with four spaces indentation and 100 columns
 
-read -r -d '' hlp_msg << EOF
+read -r -d '' hlp_msg << 'EOF'
 Find files ending in .launched, get the status of the jobs, and print a line for each file created
 by the jobs and the status.
 
@@ -12,15 +12,15 @@ Usage:
 
 where:
 - <working-path>, base directory where to put the scripts and write the outputs.
-EOF 
+EOF
 
-if [ ${1} == -h -o ${1} == --help ]; then
+if [ ${#*} -ge 1 ] && [ ${1} == -h -o ${1} == --help ]; then
     # Show help
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit
-elif [ ${#*} != 2 ]; then
+elif [ ${#*} != 1 ]; then
     echo "Invalid number of arguments"
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit 1
 fi
 

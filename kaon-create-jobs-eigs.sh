@@ -2,7 +2,7 @@
 
 # NOTE: style with four spaces indentation and 100 columns
 
-read -r -d '' hlp_msg << EOF
+read -r -d '' hlp_msg << 'EOF'
 Create SLURM jobs to create eigenvectors.
 
 Usage:
@@ -10,26 +10,19 @@ Usage:
   ... | kaon-create-jobs-eigs.sh
 
 where:
-- ..., the script reads from each line in the standard input:
-  * the prefix for storing the slurm file and the output,
-  * the configuration file path,
-  * the smear factor,
-  * the smear steps,
-  * the number of eigenvector, and
-  * the eigenvector file path.
-EOF 
+- ..., the script reads a schema from the standard input.
+EOF
 
-if [ ${1} == -h -o ${1} == --help ]; then
+if [ ${#*} -ge 1 ] && [ ${1} == -h -o ${1} == --help ]; then
     # Show help
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit
-elif [ ${#*} != 3 ]; then
+elif [ ${#*} != 0 ]; then
     echo "Invalid number of arguments"
-    echo ${hlp_msg}
+    echo "${hlp_msg}"
     exit 1
 fi
 
-work="$1"
 node_type="`./kaon.py facilities.json --facility $THIS_FACILITY --show node_type`"
 ./kaon.py - --show eig_default_run cfg_file smear_fact smear_num default_vecs eig_default_file \
             space_size time_size eig_${node_type}_geom eig_${node_type}_num_nodes \
