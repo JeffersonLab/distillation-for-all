@@ -118,26 +118,28 @@ def check_depends(x, path):
         elif isinstance(v, dict):
             check_depends_value_dict(v, path + "/" + k)
         else:
-            show_error(False, "unexpected value, it should be a list of an object", path + "/" + k)
+            show_error(False, "unexpected value, it should be a list or an object", path + "/" + k)
 
 
 def check_executor(x, path):
     """
-    Check that the input is a dictionary where the keys are `command`, with a string value and
-    `return-attributes` with a plain list.
+    Check that the input is a dictionary where the keys are `command`, with a string value,
+    `return-attributes` with a plain list, and optionally `split` with a string.
     """
 
     check_dict(x, path)
     for k, v in x.items():
-        show_error(k in ("command", "return-attributes"),
+        show_error(k in ("command", "return-attributes", "split"),
                    "unexpected key, it can be `command` or `return-attributes`", path + "/" + k)
         check_string(k, path)
         if k == "command":
             check_string(v, path + "/" + k)
         elif k == "return-attributes":
             check_flat_list(v, path + "/" + k)
+        elif k == 'split':
+            check_string(v, path + "/" + k)
     show_error("command" in x and "return-attributes" in x,
-               "missing keys, expected `command` and `return-attribute` as keys", path)
+               "missing keys, expected `command` and `return-attributes` as keys", path)
 
 
 def check_scheme_item(x, path):
@@ -168,6 +170,7 @@ def check_scheme_item(x, path):
             show_error(False, "unexpected key", path + "/" + k)
     show_error("values" not in x or ("depends" not in x and "executor" not in x),
                "unexpected keys, if `values` is present, `depends` or `executor` isn't allowed", path)
+    show_error("id" in x, "expected key `id` is missing", path)
 
 
 def check_schema(x):
@@ -179,12 +182,35 @@ def check_schema(x):
     for i, v in enumerate(x):
         check_scheme_item(v, "[{}]".format(i))
 
+
+def check_constrain_item(x, path):
+    """
+    Check that the input is a dictionary with possible values a list of strings or a string.
+    """
+
+    check_dict(x, path)
+    for k, v in x.items():
+        check_string(k, x)
+        if not isinstance(v, str):
+            check_flat_list(v, path + "/" + k)
+
+
+def check_constrains(x):
+    """
+    Check that the input is a list of dictionaries satisfying a constrain schema.
+    """
+
+    check_list(x, "/")
+    for i, v in enumerate(x):
+        check_constrain_item(v, "[{}]".format(i))
+
+
 #
 # Execute schemas
 #
 
 
-def execute_schema(schema, view):
+def execute_schema(schema, constrained_view, env):
     """
     Execute each of the actions in the schema in the same order as given.
     """
@@ -198,15 +224,15 @@ def execute_schema(schema, view):
             # Set default values for missing attributes
             apply_defaults(new_artifacts, action.get('defaults', {}))
             new_artifacts = [
-                artifact for artifact in new_artifacts if is_artifact_in_view(artifact, view)]
+                artifact for artifact in new_artifacts if is_artifact_in_constrained_view(artifact, constrained_view)]
         else:
             filtered_artifacts = apply_depends_to_artifacts(
-                artifacts.values(), view, action.get('depends', {}))
+                artifacts.values(), constrained_view, env, action.get('depends', {}))
             # Set default values for missing attributes
             apply_defaults(filtered_artifacts, action.get('defaults', {}))
             try:
                 new_artifacts = apply_executor_to_artifacts(
-                    filtered_artifacts, action['executor']) if 'executor' in action else filtered_artifacts
+                    filtered_artifacts, env, action['executor']) if 'executor' in action else filtered_artifacts
             except Exception as e:
                 raise Exception(
                     "Error in executing executor in action with name `{}`.".format(action_name)) from e
@@ -215,7 +241,7 @@ def execute_schema(schema, view):
             artifact.update(action.get('update', {}))
             # Compute the identification
             try:
-                the_id = action['id'].format(**artifact)
+                the_id = action['id'].format(**dict_with_defaults(artifact, env))
             except KeyError as e:
                 raise Exception(
                     "Error interpolating the id in action with name `{}` for entry {}.".format(action_name, artifact)) from e
@@ -248,7 +274,29 @@ def is_artifact_in_view(artifact, view):
     return True
 
 
-def apply_depends(artifact, depends):
+def is_artifact_in_constrained_view(artifact, constrained_view):
+    """
+    Return whether the artifact satisfies any of the views.
+    """
+
+    for view in constrained_view:
+        if is_artifact_in_view(artifact, view):
+            return True
+    return False
+
+
+def dict_with_defaults(a, defaults):
+    """
+    Return the first dictionary with key-values from the second dictionary if missing in the first one.
+    """
+
+    r = dict(**a)
+    for k, v in defaults.keys():
+        r.setdefault(k, v)
+    return r
+
+
+def apply_depends(artifact, env, depends):
     """
     Return an artifact after applying the constrain and actions in depends or None if the artifact
     does not satisfies the constrains.
@@ -263,7 +311,8 @@ def apply_depends(artifact, depends):
         else:
             if "matching-re" in v:
                 try:
-                    m = re.fullmatch(v['matching-re'].format(**artifact), artifact[k])
+                    m = re.fullmatch(
+                        v['matching-re'].format(**dict_with_defaults(artifact, env)), artifact[k])
                 except KeyError:
                     return None
                 if not m:
@@ -271,10 +320,12 @@ def apply_depends(artifact, depends):
                 new_artifact.update(m.groupdict())
             if "copy-as" in v:
                 new_artifact[v['copy-as']] = artifact[k]
+            elif "interpolate" in v:
+                new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
     return new_artifact
 
 
-def apply_depends_to_artifacts(artifacts, view, depends):
+def apply_depends_to_artifacts(artifacts, constrained_view, env, depends):
     """
     Filter artifacts that pass the constrains in the view and depends.
     """
@@ -282,17 +333,17 @@ def apply_depends_to_artifacts(artifacts, view, depends):
     filtered_artifacts = []
     for artifact in artifacts:
         # Ignore artifacts that don't pass the view
-        if not is_artifact_in_view(artifact, view):
+        if not is_artifact_in_constrained_view(artifact, constrained_view):
             continue
         # Apply depends
-        new_artifact = apply_depends(artifact, depends)
+        new_artifact = apply_depends(artifact, env, depends)
         # Append new artifact to the list
         if new_artifact is not None:
             filtered_artifacts.append(new_artifact)
     return filtered_artifacts
 
 
-def apply_executor_to_artifacts(artifacts, executor):
+def apply_executor_to_artifacts(artifacts, env, executor):
     """
     Execute some command and return artifacts from the output.
     """
@@ -301,12 +352,12 @@ def apply_executor_to_artifacts(artifacts, executor):
     expected_num_fields = len(executor['return-attributes'])
     for artifact in artifacts:
         try:
-            cmd = executor['command'].format(**artifact)
+            cmd = executor['command'].format(**dict_with_defaults(artifact, env))
         except KeyError:
             continue
         r = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
         for line in r.stdout.splitlines():
-            line_elems = line.split()
+            line_elems = line.split(sep=executor.get('split', None))
             if len(line_elems) != expected_num_fields:
                 raise Exception(
                     'Expected an output with {} field(s) from output `{}`'.format(
@@ -317,7 +368,7 @@ def apply_executor_to_artifacts(artifacts, executor):
     return new_artifacts
 
 #
-# Read/write schemas and artifacts
+# Read/write schemas, constrains, and artifacts
 #
 
 
@@ -328,19 +379,59 @@ def get_schema_from_json(json_files):
 
     schema = []
     for filename in json_files:
-        f = sys.stdin if filename == '-' else open(filename, 'rt')
-        schema_item = json.load(f)
         try:
+            f = sys.stdin if filename == '-' else open(filename, 'rt')
+            schema_item = json.load(f)
             check_schema(schema_item)
+            f.close()
         except Exception as e:
-            raise ValueError("KaoN schema error in file {}:" + str(e))
-        f.close()
+            raise ValueError("KaoN schema error in file {}") from e
         schema.extend(schema_item)
     return schema
 
 
+def normalize_value_constrain(values):
+    """
+    Return a set of possible options allowed for each attribute.
+    """
+
+    s = set()
+    for value in values:
+        if re.fullmatch(r"\d+:\d+", value):
+            v = value.split(":")
+            s.update([str(i) for i in range(int(v[0]), int(v[1]))])
+        elif re.fullmatch(r"\d+:\d+:\d+", value):
+            v = value.split(":")
+            s.update([str(i) for i in range(int(v[0]), int(v[2]), int(v[1]))])
+        else:
+            s.add(value)
+    return s
+
+
+def get_constrains_from_json(json_files):
+    """
+    Return a list of constrains concatenating the constrains from all given files.
+    """
+
+    constrains = []
+    for filename in json_files:
+        try:
+            f = sys.stdin if filename == '-' else open(filename, 'rt')
+            constrains_item = json.load(f)
+            f.close()
+            check_constrains(constrains_item)
+        except Exception as e:
+            raise ValueError("KaoN constrains error in file {}:") from e
+        # Normalize the constrains
+        normalize_constrains_item = [dict([(k, normalize_value_constrain(v if isinstance(
+            v, list) else [v])) for k, v in constrain.items()]) for constrain in constrains_item]
+        constrains.extend(normalize_constrains_item)
+    return constrains
+
+
 # Internal attributes that are not interesting in outputs
-ignore_attributes = ["option-name", "option-doc"]
+ignore_attributes = ["option-name", "option-doc",
+                     "variable-name", "variable-doc", "variable-default"]
 
 
 def restrict_output_attributes(artifacts, output_attributes, ignore_doc_attributes=True):
@@ -420,7 +511,7 @@ def print_artifacts_as_schema(artifacts, output_attributes):
 
 def get_options_from_schema(schema):
     """
-    Get entries with attributes `option_name` and `option_doc`.
+    Get entries with attributes `option-name` and `option-doc`.
     """
 
     return dict(
@@ -430,22 +521,33 @@ def get_options_from_schema(schema):
          if "option-name" in entry and "option-doc" in entry])
 
 
-def normalize_value_constrain(values):
+def get_variables_from_schema(schema):
     """
-    Return a set of possible options allowed for each attribute.
+    Get entries with attributes `variable-name` and `variable-doc`.
     """
 
-    s = set()
-    for value in values:
-        if re.fullmatch(r"\d+:\d+", value):
-            v = value.split(":")
-            s.update([str(i) for i in range(int(v[0]), int(v[1]))])
-        elif re.fullmatch(r"\d+:\d+:\d+", value):
-            v = value.split(":")
-            s.update([str(i) for i in range(int(v[0]), int(v[2]), int(v[1]))])
-        else:
-            s.add(value)
-    return s
+    return [(entry['variable-name'], entry.get('variable-default', None),
+             entry['variable-doc']) for action in schema
+            if 'values' in action for entry in action['values']
+            if "variable-name" in entry and "variable-doc" in entry]
+
+
+def get_constrained_view(constrains, view):
+    """
+    Apply the view to all given constrains.
+    """
+
+    # If no constrain, just return the view
+    if not constrains:
+        return [view]
+
+    output_constrains = []
+    for constrain in constrains:
+        new_constrain = dict(**constrain)
+        for k, v in view.items():
+            new_constrain[k] = new_constrain[k].intersect(v) if k in new_constrain else v
+        output_constrains.append(new_constrain)
+    return output_constrains
 
 
 def process_args():
@@ -489,6 +591,8 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
                         help="KaoN schema file, use - to read it from the standard input")
     parser.add_argument('--help', '-h', help='Show help', action='store_true',
                         default=False, required=False)
+    parser.add_argument('--constrains', help='JSON file with a list of constrains', nargs='+',
+                        required=False, default=[])
     try:
         args = parser.parse_known_args()
     except Exception as e:
@@ -506,8 +610,9 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     # Read schemas
     schema = get_schema_from_json(args[0].inputs)
 
-    # Get options and documentation from the values of the schema
+    # Get options, variables, and documentation from the values of the schema
     attribute_options = get_options_from_schema(schema)
+    attribute_variables = get_variables_from_schema(schema)
 
     # Do the full commandline parsing
     attributes_str = ", ".join(attribute_options.keys())
@@ -519,7 +624,7 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     parser.add_argument(
         '--output-format', dest='output_format', nargs=1, required=False,
         choices=['headless-table', 'table', 'json', 'schema'],
-        default='headless-table',
+        default=['headless-table'],
         help='how to print the artifacts, in table form with headers (table) '
         'or without headers (headless-table), in a list of dictionaries (json), '
         'or as KaoN schema (schema)')
@@ -530,22 +635,35 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     for k, v in attribute_options.items():
         group_attributes.add_argument(
             '--' + k, nargs='+', required=False, help=v, metavar='value')
-
+    group_attributes = parser.add_argument_group('Variables')
+    for k, default, doc in attribute_variables:
+        group_attributes.add_argument(
+            '--' + k, nargs=1, required=default is None, help=doc, metavar='value', default=[default])
     args = parser.parse_args()
+
     # Show help
     if args.help:
         parser.print_help()
         sys.exit(0)
 
     # Create a view with all the constrains
+    vars_args = vars(args)
     view = {}
-    for k, v in vars(args).items():
-        if v is None or k not in attribute_options:
-            continue
-        view[k] = normalize_value_constrain(v)
+    for k in attribute_options:
+        if k in vars_args and vars_args[k] is not None:
+            view[k] = normalize_value_constrain(vars_args[k])
+
+    # Load extra constrains
+    constrains = get_constrains_from_json(args.constrains)
+    constrained_view = get_constrained_view(constrains, view)
+
+    # Get environment for interpolation
+    env = {}
+    for k, _, _ in attribute_variables:
+        env[k] = vars_args[k][0]
 
     # Execute the scheme
-    artifacts = execute_schema(schema, view)
+    artifacts = execute_schema(schema, constrained_view, env)
 
     # Print the results
     output_attributes = args.show
@@ -580,8 +698,8 @@ def do_test():
     check_schema(schema)
     true_artifacts = [{"kind": "ensemble", "name": "ensemble1", "alias": "ensemble1", "num": "1"},
                       {"kind": "ensemble", "name": "ensemble2", "alias": "ensemble2", "num": "2"}]
-    assert(list(execute_schema(schema, {})) == true_artifacts)
-    assert(list(execute_schema(schema, {'name': ['ensemble2']})) == true_artifacts[1:])
+    assert(execute_schema(schema, [{}], {}) == true_artifacts)
+    assert(execute_schema(schema, [{'name': ['ensemble2']}], {}) == true_artifacts[1:])
 
     schema = [{
         "values": [{"option-name": "prefix", "option-doc": "prefix doc"}],
@@ -605,7 +723,7 @@ def do_test():
                       {"prefix": "pre0", "o0": "pre0", "o1": "2", "o2": "v2"},
                       {"prefix": "pre1", "o0": "pre1", "o1": "1", "o2": "v2"},
                       {"prefix": "pre1", "o0": "pre1", "o1": "2", "o2": "v2"}]
-    assert(list(execute_schema(schema, {})) == true_artifacts)
+    assert(execute_schema(schema, [{}], {}) == true_artifacts)
 
 
 if __name__ == "__main__":
