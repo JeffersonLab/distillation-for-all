@@ -3,7 +3,10 @@
 #
 # PLEASE set these up before calling any of the scripts here!
 
-# JLab endpoing
+# JLab tape directory access
+JLAB_REMOTE_MSS="ssh -J login.jlab.org qcdi1402"
+# JLab cache directory access
+JLAB_REMOTE_CACHE="ssh -J login.jlab.org qcdi1402"
 export THIS_FACILITY="jz"
 # Path in the facility to store configuration, eigenvectors, ...
 export LOCAL_CACHE=/scratch/whatever

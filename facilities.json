@@ -2,15 +2,74 @@
     {
         "values": [
             {
+                "option-name": "facility",
+                "option-doc": "facility id"
+            },
+            {
+                "option-name": "node_type",
+                "option-doc": "facility id"
+            },
+            {
+                "option-name": "num_cores",
+                "option-doc": "CPU cores per node; if given OMP_NUM_THREADS and MKL_NUM_THREADS is set up"
+            },
+            {
+                "option-name": "do_eigs",
+                "option-doc": "whether to compute eigenvectors"
+            },
+            {
+                "option-name": "do_props",
+                "option-doc": "whether to compute propagators, genprops, and disconnected diagrams"
+            },
+            {
+                "option-name": "do_redstar",
+                "option-doc": "whether to compute correlation functions with redstar"
+            },
+            {
+                "option-name": "prop_max_job_bundling",
+                "option-doc": "maximum number of jobs bundled together; it limits the number of open files for prop and genprops"
+            },
+            {
+                "option-name": "max_nodes_per_job",
+                "option-doc": "maximum number of nodes bundled in a single job"
+            },
+            {
+                "option-name": "chroma_env",
+                "option-doc": "environ script to load before running chroma"
+            },
+            {
+                "option-name": "chroma_srun",
+                "option-doc": "launcher for chroma and launcher arguments"
+            },
+            {
+                "option-name": "chroma_bin",
+                "option-doc": "full path to chroma binary"
+            },
+            {
+                "option-name": "chroma_extra_args",
+                "option-doc": "extra chroma command line arguments"
+            },
+            {
+                "option-name": "sbatch_extra",
+                "option-doc": "sbatch extra command line arguments, eg the allocation, the queue..."
+            }
+        ],
+        "update": {
+            "option-group": "facilities"
+        },
+        "id": "option-{option-name}"
+    },
+    {
+        "values": [
+            {
                 "facility": "jz-gpu",
-                "proc_type": "4V100",
+                "node_type": "4V100",
                 "num_cores": "32",
-                "eig_max_job_bundling": "1",
+                "do_eigs": "yes",
+                "do_props": "yes",
+                "do_redstar": "no",
                 "prop_max_job_bundling": "1",
-                "gprop_max_job_bunding": "1",
                 "max_nodes_per_job": "999999",
-                "shell": "bash",
-                "use_slurm_array": "yes",
                 "chroma_env": "",
                 "chroma_srun": "",
                 "chroma_bin": "",
@@ -19,13 +78,15 @@
             },
             {
                 "facility": "cori-knl",
-                "proc_type": "knl",
+                "node_type": "knl",
+                "num_cores": "0",
+                "do_eigs": "yes",
+                "do_props": "yes",
+                "do_redstar": "no",
                 "eig_max_job_bundling": "1",
                 "prop_max_job_bundling": "99999",
                 "gprop_max_job_bunding": "99999",
                 "max_nodes_per_job": "1100",
-                "shell": "bash",
-                "use_slurm_array": "yes",
                 "chroma_env": "",
                 "chroma_srun": "",
                 "chroma_bin": "",
@@ -34,5 +95,14 @@
             }
         ],
         "id": "facility-{facility}"
+    },
+    {
+        "values": [
+            {
+                "facility": "js-gpu",
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+            }
+        ],
+        "id": "activation-{facility}-{ens_name}"
     }
 ]

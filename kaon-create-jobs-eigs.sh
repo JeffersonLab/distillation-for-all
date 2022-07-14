@@ -30,10 +30,10 @@ elif [ ${#*} != 3 ]; then
 fi
 
 work="$1"
-proc_type="`./kaon.py facilities.json --facility $THIS_FACILITY --show proc_type`"
+node_type="`./kaon.py facilities.json --facility $THIS_FACILITY --show node_type`"
 ./kaon.py - --show eig_default_run cfg_file smear_fact smear_num default_vecs eig_default_file \
-            space_size time_size eig_${proc_type}_geom eig_${proc_type}_num_nodes \
-            eig_${proc_type}_maxtime --columns-sep "|" | while IFS='|' read runpath cfg_file \
+            space_size time_size eig_${node_type}_geom eig_${node_type}_num_nodes \
+            eig_${node_type}_maxtime --columns-sep "|" | while IFS='|' read runpath cfg_file \
             smear_fact smear_num num_vecs eig_file ssize tsize geom nodes maxtime; do
 
     mkdir -p `dirname $runpath`
