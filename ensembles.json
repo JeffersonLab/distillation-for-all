@@ -3,10 +3,10 @@
         "values": [
             {
                 "option-name": "kind",
-                "option-doc": "one of ensemble, configuration, eigenvector, propagator, genprop..."
+                "option-doc": "one of ensemble, stream, configuration, eigenvector, propagator, genprop..."
             },
             {
-                "option-name": "cfg_name",
+                "option-name": "ens_name",
                 "option-doc": "ensemble name, which is common to all streams belonging to the same ensemble"
             },
             {
@@ -114,13 +114,16 @@
                 "option-doc": "MG inverter options when computing propagators in 4 V100 nodes; see chroma_python's --mg_parameters option"
             }
         ],
+        "update": {
+            "option-group": "ensembles"
+        },
         "id": "option-{option-name}"
     },
     {
         "values": [
             {
                 "kind": "ensemble",
-                "cfg_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
                 "space_size": "48",
                 "time_size": "96",
                 "beta": "-0.2416",
@@ -166,6 +169,6 @@
                 "gprop_4V100_mg_params": "RsdTarget=1.0e-7;AntiPeriodicT=True;SolverType=GCR;Blocking=3,3,4,4:2,2,2,2;NullVectors=24:32;SmootherType=CA_GCR:CA_GCR:CA_GCR;SmootherTol=0.25:0.25:0.25;CoarseSolverType=GCR:CA_GCR;CoarseResidual=0.1:0.1:0.1;Pre-SmootherApplications=0:0;Post-SmootherApplications=8:8;SubspaceSolver=CG:CG;RsdTargetSubspaceCreate=5e-06:5e-06"
             }
         ],
-        "id": "ensemble-{cfg_name}"
+        "id": "ensemble-{ens_name}"
     }
 ]
