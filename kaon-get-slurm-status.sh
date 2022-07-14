@@ -68,9 +68,11 @@ find "$work" -name *.launched | while read i ; do
             if ${i%.launched}.sh check ; then
                 echo success > $verify_file
                 echo success $jobid `date` >> $slurm_log
+                status="local"
             else
                 echo fail > $verify_file
                 echo fail $jobid `date` >> $slurm_log
+                status="failed"
             fi
         fi
     fi
