@@ -72,7 +72,7 @@
                 "variable-doc": "full path to the local run directory",
                 "variable-default": "run"
             }
-          ],
+        ],
         "id": "variable-{variable-name}"
     },
     {
@@ -104,7 +104,9 @@
         },
         "executor": {
             "command": "{JLAB_REMOTE_CACHE} find /cache/isoClover/{cfg_dir} | while read file ; do echo ${{file#/cache/isoClover/}}; done",
-            "return-attributes": "file"
+            "return-attributes": [
+                "file"
+            ]
         },
         "update": {
             "kind": "file",
@@ -116,8 +118,10 @@
         "name": "fix status for files being brought from tape",
         "description": "avoid operating with files not fully copied from tape",
         "executor": {
-            "command": "kaon-get-files-transitioning-to-cache.sh",
-            "return-attributes": "file"
+            "command": "./kaon-get-files-transitioning-to-cache.sh",
+            "return-attributes": [
+                "file"
+            ]
         },
         "update": {
             "kind": "file",
@@ -133,7 +137,7 @@
             ]
         },
         "executor": {
-            "command": "kaon-get-promises.sh {cfg_dir}",
+            "command": "./kaon-get-promises.sh {cfg_dir}",
             "return-attributes": [
                 "file",
                 "promiser"
@@ -216,8 +220,8 @@
             "remote_status": "none"
         },
         "executor": {
-            "command": "kaon-get-slurm-status.sh ${LOCAL_RUN}/{cfg_dir}",
-            "return_attributes": [
+            "command": "./kaon-get-slurm-status.sh ${LOCAL_RUN}/{cfg_dir}",
+            "return-attributes": [
                 "file",
                 "status"
             ]
@@ -299,7 +303,7 @@
                 "file"
             ],
             "file": {
-                "matching-glob": "{cfg_dir}/prop_db/{cfg_prefix}.prop.n{prop_num_vecs}.light.t0_{prop_t_source}.sdb{cfg_num}",
+                "matching-re": "{cfg_dir}/prop_db/{cfg_prefix}.prop.n(?P<prop_num_vecs>\\d+).light.t0_(?P<prop_t_source>\\d+).sdb(?P<fg_num>\\d)",
                 "copy-as": "file_prop"
             },
             "status": {
@@ -321,7 +325,7 @@
                 "file"
             ],
             "file": {
-                "matching-glob": "{cfg_dir}/phase/prop_db/{cfg_prefix}.prop.n{prop_num_vecs}.light.t0_{prop_t_source}.phased_{prop_phase}.sdb{cfg_num}",
+                "matching-re": "{cfg_dir}/phase/prop_db/{cfg_prefix}.prop.n(?P<prop_num_vecs>\\d+).light.t0_(?P<prop_t_source>\\d+).phased_(?P<prop_phase>.+).sdb(?P<cfg_num>\\d+)",
                 "copy-as": "file_prop"
             },
             "status": {

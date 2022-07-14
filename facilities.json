@@ -7,7 +7,7 @@
             },
             {
                 "option-name": "node_type",
-                "option-doc": "facility id"
+                "option-doc": "one of knl (for KNLs), 32cpu (for similar to 32 core nodes), 4V100 (for 4 V100 on the node) "
             },
             {
                 "option-name": "num_cores",
@@ -99,7 +99,7 @@
     {
         "values": [
             {
-                "facility": "js-gpu",
+                "facility": "jz-gpu",
                 "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
             }
         ],
