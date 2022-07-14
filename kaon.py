@@ -291,7 +291,7 @@ def dict_with_defaults(a, defaults):
     """
 
     r = dict(**a)
-    for k, v in defaults.keys():
+    for k, v in defaults.items():
         r.setdefault(k, v)
     return r
 
@@ -385,7 +385,7 @@ def get_schema_from_json(json_files):
             check_schema(schema_item)
             f.close()
         except Exception as e:
-            raise ValueError("KaoN schema error in file {}") from e
+            raise ValueError("KaoN schema error in file {}".format(filename)) from e
         schema.extend(schema_item)
     return schema
 
@@ -430,7 +430,7 @@ def get_constrains_from_json(json_files):
 
 
 # Internal attributes that are not interesting in outputs
-ignore_attributes = ["option-name", "option-doc",
+ignore_attributes = ["option-name", "option-doc", "option-group",
                      "variable-name", "variable-doc", "variable-default"]
 
 
@@ -491,6 +491,7 @@ def print_artifacts_as_json(artifacts, output_attributes):
 
     artifacts = restrict_output_attributes(artifacts, output_attributes)
     json.dump(artifacts, sys.stdout, indent=4, sort_keys=True)
+    sys.stdout.write('\n')
 
 
 def print_artifacts_as_schema(artifacts, output_attributes):
@@ -503,6 +504,7 @@ def print_artifacts_as_schema(artifacts, output_attributes):
         artifacts, output_attributes, ignore_doc_attributes=False)
     schema = [{'values': artifacts}]
     json.dump(schema, sys.stdout, indent=4, sort_keys=True)
+    sys.stdout.write('\n')
 
 #
 # Commandline
@@ -514,11 +516,16 @@ def get_options_from_schema(schema):
     Get entries with attributes `option-name` and `option-doc`.
     """
 
-    return dict(
-        [(entry['option-name'],
-          entry['option-doc']) for action in schema
-         if 'values' in action for entry in action['values']
-         if "option-name" in entry and "option-doc" in entry])
+    r = []
+    for action in schema:
+        for entry in action.get('values', []):
+            extended_entry = dict(**entry)
+            apply_defaults(extended_entry, action.get('defaults', {}))
+            extended_entry.update(action.get('update', {}))
+            if "option-name" in extended_entry and "option-doc" in extended_entry:
+                r.append(
+                    (extended_entry['option-name'], extended_entry['option-doc'], extended_entry.get('option-group', '')))
+    return r
 
 
 def get_variables_from_schema(schema):
@@ -615,7 +622,7 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     attribute_variables = get_variables_from_schema(schema)
 
     # Do the full commandline parsing
-    attributes_str = ", ".join(attribute_options.keys())
+    attributes_str = ", ".join([k for k, _, _ in attribute_options])
     parser.add_argument(
         '--show', metavar='<attr>', nargs='+', required=False,
         help='output only the values of the indicated attributes; if --option-format is `table`, '
@@ -631,9 +638,12 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     parser.add_argument(
         '--column-sep', metavar='<sep>', nargs=1, required=False,
         help='column separation when printing a table', default=[' '])
-    group_attributes = parser.add_argument_group('Options for attributes')
-    for k, v in attribute_options.items():
-        group_attributes.add_argument(
+    group_attributes = {}
+    for k, v, g in attribute_options:
+        if g not in group_attributes:
+            group_attributes[g] = parser.add_argument_group(
+                'Options for {}'.format(g if g else 'attributes'))
+        group_attributes[g].add_argument(
             '--' + k, nargs='+', required=False, help=v, metavar='value')
     group_attributes = parser.add_argument_group('Variables')
     for k, default, doc in attribute_variables:
@@ -649,7 +659,7 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     # Create a view with all the constrains
     vars_args = vars(args)
     view = {}
-    for k in attribute_options:
+    for k, _, _ in attribute_options:
         if k in vars_args and vars_args[k] is not None:
             view[k] = normalize_value_constrain(vars_args[k])
 
