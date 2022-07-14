@@ -20,6 +20,6 @@ elif [ ${#*} != 1 ]; then
     exit 1
 fi
 
-ssh -J login.jlab.org qcdi1402 srmPendingRequest | grep -E "-> (pending|running)" | while read file crap ; do
+${JLAB_REMOTE} srmPendingRequest | grep -E "-> (pending|running)" | while read file crap ; do
     echo ${file#/cache/isoClover}
 done

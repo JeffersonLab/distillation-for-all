@@ -27,7 +27,7 @@ work="$1"
 
 buffer="$(( 60*60*24 ))"
 d="$(( `date +%s` - buffer ))"
-ssh -J login.jlab.org qcdi1402 bash -c "[ -d /volatile/JLabLQCD/eromero/promises/${work} ] && find /volatile/JLabLQCD/eromero/promises/${work}" | while read file crap ; do
+${JLAB_REMOTE} bash -c "[ -d /volatile/JLabLQCD/eromero/promises/${work} ] && find /volatile/JLabLQCD/eromero/promises/${work}" | while read file crap ; do
 	IFS="@" read filepath epoch promiser <<< "$file"
 	[ $epoch -ge $d ] && echo $filepath $promiser
 done

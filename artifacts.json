@@ -56,6 +56,26 @@
         "id": "option-{option-name}"
     },
     {
+        "values": [
+            {
+                "variable-name": "JLAB_REMOTE",
+                "variable-doc": "prefix commandline to access JLab's /mss, /cache, and tape utilities; eg. ssh -J login.jlab.org qcdi1401",
+                "variable-default": ""
+            },
+            {
+                "variable-name": "LOCAL_CACHE",
+                "variable-doc": "full path to the local cache directory",
+                "variable-default": "cache"
+            },
+            {
+                "variable-name": "LOCAL_RUN",
+                "variable-doc": "full path to the local run directory",
+                "variable-default": "run"
+            }
+          ],
+        "id": "variable-{variable-name}"
+    },
+    {
         "name": "mss",
         "depends": {
             "kind": [
@@ -196,7 +216,7 @@
             "remote_status": "none"
         },
         "executor": {
-            "command": "kaon-get-slurm-status.sh ${LOCAL_RUNS}/{cfg_dir}",
+            "command": "kaon-get-slurm-status.sh ${LOCAL_RUN}/{cfg_dir}",
             "return_attributes": [
                 "file",
                 "status"

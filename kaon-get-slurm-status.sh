@@ -24,6 +24,9 @@ elif [ ${#*} != 2 ]; then
     exit 1
 fi
 
+# Check if SLURM tools are available and silently quit if not
+which squeue || exit
+
 slurm_log="slurm_log.txt"
 slurm_lock="slurm_lock.txt"
 

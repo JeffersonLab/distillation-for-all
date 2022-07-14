@@ -16,12 +16,13 @@ max_eig_promises="0"
 #
 
 # Set scope, work with configurations and eigenvector from a stream and a range of trajectories
-scope="facilities.json ensemble.json artifacts.json --constrains goals-facility.json "
+scope="facilities.json ensemble.json artifacts.json --constrains goals-facility.json --JLAB_REMOTE ${JLAB_REMOTE} --LOCAL_CACHE ${LOCAL_CACHE} --LOCAL_RUN ${LOCAL_RUN}"
 
 # Iteratively run the following steps until the number of configuration without an eigenvector is zero
 while true ; do
 	# a) Capture all information about the goals
 	./kaon.py $scope --output-format schema > scope.json
+	exit 0
 
 	# b) Copy back configurations and eigenvectors that are not at jlab's tape
 	./kaon.py scope.json --cfg_file_remote_status promised none --cfg_file_status "local" --show cfg_file | kaon-remote-cp.sh here jlab
