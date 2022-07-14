@@ -1,0 +1,31 @@
+[
+    {
+        "values": [
+            {
+                "option-name": "cfg_dir",
+                "option-doc": "configuration root directory relative to the cache"
+            }
+        ],
+        "id": "option-{option-name}"
+    },
+    {
+        "values": [
+            {
+                "kind": "stream",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs",
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+            },
+            {
+                "kind": "stream",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000-rightColorvecs",
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+            },
+            {
+                "kind": "stream",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams-rightColorvecs/cl21_48_96_b6p3_m0p2416_m0p2050",
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+            }
+        ],
+        "id": "stream-{cfg_dir}"
+    }
+]

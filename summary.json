@@ -1,0 +1,18 @@
+[
+    {
+        "depends": {
+            "kind": [
+                "stream"
+            ]
+        },
+        "executor": {
+            "command": "echo `./kaon.py scope.json --kind configuration --cfg_dir {cfg_dir} | wc -l` `./kaon.py scope.json --kind eigenvector --cfg_dir {cfg_dir} --eig_remote_status tape cache | wc -l` `./kaon.py scope.json --kind eigenvector --cfg_dir {cfg_dir} --eig_remote_status promised | wc -l`",
+            "return-attributes": [
+                "num_cfgs",
+                "num_eigs",
+                "num_eigs_promised"
+            ]
+        },
+        "id": "ensemble-{ens_name}"
+    }
+]
