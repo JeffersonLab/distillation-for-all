@@ -25,6 +25,6 @@ if [ x${JLAB_REMOTE}x == xx ] && ! which srmPendingRequest ; then
     exit
 fi
 
-${JLAB_REMOTE} srmPendingRequest | grep -E "-> (pending|running)" | while read file crap ; do
+${JLAB_REMOTE} srmPendingRequest | grep -E -e "-> (pending|running)" | while read file crap ; do
     echo ${file#/cache/isoClover}
 done

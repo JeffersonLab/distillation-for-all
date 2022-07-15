@@ -12,17 +12,20 @@
         "values": [
             {
                 "kind": "stream",
-                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050/cfgs",
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs",
                 "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
             },
             {
                 "kind": "stream",
-                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000-rightColorvecs",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000/cfgs",
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000-rightColorvecs",
                 "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
             },
             {
                 "kind": "stream",
-                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams-rightColorvecs/cl21_48_96_b6p3_m0p2416_m0p2050",
+                "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams/cl21_48_96_b6p3_m0p2416_m0p2050/cfgs",
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams-rightColorvecs/cl21_48_96_b6p3_m0p2416_m0p2050",
                 "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
             }
         ],

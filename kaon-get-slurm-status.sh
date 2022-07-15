@@ -25,13 +25,16 @@ elif [ ${#*} != 1 ]; then
 fi
 
 # Check if SLURM tools are available and silently quit if not
-which squeue || exit
+which squeue >& /dev/null || exit 0
 
 slurm_log="slurm_log.txt"
 slurm_lock="slurm_lock.txt"
 
 # Find track of launched files under this directory
 work="$1"
+
+# If work directory does not exists, quietly quit
+[ -d $work ] || exit 0
 
 # Get the state for all jobs as two columns, job_id and status
 sq="`mktemp`"
