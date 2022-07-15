@@ -17,6 +17,8 @@ import itertools
 import argparse
 import subprocess
 
+log_level = 1
+
 #
 # Check schema types
 #
@@ -142,7 +144,7 @@ def check_executor(x, path):
                "missing keys, expected `command` and `return-attributes` as keys", path)
 
 
-def check_scheme_item(x, path):
+def check_action(x, path):
     """
     Check that the input is a dictionary with keys `id`, `depends`, `executor` (optional), `values`
     (optional), `defaults` (optional), and `update` (optional).
@@ -166,6 +168,8 @@ def check_scheme_item(x, path):
             check_flat_dict(v, path + "/defaults")
         elif k == "update":
             check_flat_dict(v, path + "/update")
+        elif k == "debug":
+            check_flat_list(v, path + "/debug")
         else:
             show_error(False, "unexpected key", path + "/" + k)
     show_error("values" not in x or ("depends" not in x and "executor" not in x),
@@ -180,7 +184,7 @@ def check_schema(x):
 
     check_list(x, "/")
     for i, v in enumerate(x):
-        check_scheme_item(v, "[{}]".format(i))
+        check_action(v, "[{}]".format(i))
 
 
 def check_constrain_item(x, path):
@@ -218,27 +222,50 @@ def execute_schema(schema, constrained_view, env):
     artifacts = {}
     for i, action in enumerate(schema):
         action_name = action.get('name', "[{}]".format(i))
-        # Process action
+        if "debug" in action:
+            sys.stderr.write("Running action `{}`\n".format(action_name))
+
+        # a) Apply depends
+        filtered_artifacts = apply_depends_to_artifacts(
+            artifacts.values(), constrained_view, env, action['depends']) if 'depends' in action else [{}]
+        if "debug" in action and "depends" in action['debug']:
+            sys.stderr.write("> Entries after applying depends:\n")
+            json.dump(filtered_artifacts, sys.stderr, indent=4, sort_keys=True)
+            sys.stderr.write("\n")
+
+        # b) Apply defaults
+        apply_defaults(filtered_artifacts, action.get('defaults', {}))
+
+        # c) Apply values
         if "values" in action:
-            new_artifacts = [dict(**d) for d in action['values']]
-            # Set default values for missing attributes
-            apply_defaults(new_artifacts, action.get('defaults', {}))
+            new_artifacts = [dict_with_defaults(d, artifact)
+                             for d in action['values'] for artifact in filtered_artifacts]
             new_artifacts = [
                 artifact for artifact in new_artifacts if is_artifact_in_constrained_view(artifact, constrained_view)]
         else:
-            filtered_artifacts = apply_depends_to_artifacts(
-                artifacts.values(), constrained_view, env, action.get('depends', {}))
-            # Set default values for missing attributes
-            apply_defaults(filtered_artifacts, action.get('defaults', {}))
+            new_artifacts = filtered_artifacts
+
+        # e) Apply executor
+        if 'executor' in action:
             try:
-                new_artifacts = apply_executor_to_artifacts(
-                    filtered_artifacts, env, action['executor']) if 'executor' in action else filtered_artifacts
+                new_artifacts = apply_executor_to_artifacts(new_artifacts, env, action['executor'])
             except Exception as e:
                 raise Exception(
                     "Error in executing executor in action with name `{}`.".format(action_name)) from e
+            if "debug" in action and "executor" in action['debug']:
+                sys.stderr.write("> Entries after applying executor:\n")
+                json.dump(new_artifacts, sys.stderr, indent=4, sort_keys=True)
+                sys.stderr.write("\n")
+
+        # f) Apply update and add/update the entry in artifacts
+        the_ids = set()
+        updated_artifacts = []
         for artifact in new_artifacts:
             # Enforce some values
             artifact.update(action.get('update', {}))
+            if "debug" in action and "update" in action['debug']:
+                updated_artifacts.append(artifact)
+
             # Compute the identification
             try:
                 the_id = action['id'].format(**dict_with_defaults(artifact, env))
@@ -249,6 +276,20 @@ def execute_schema(schema, constrained_view, env):
                 artifacts[the_id].update(artifact)
             else:
                 artifacts[the_id] = artifact
+
+            if "debug" in action and "final" in action['debug']:
+                the_ids.add(the_id)
+
+        if "debug" in action and "update" in action['debug']:
+            sys.stderr.write("> Entries after applying update:\n")
+            json.dump(updated_artifacts, sys.stderr, indent=4, sort_keys=True)
+            sys.stderr.write("\n")
+
+        if "debug" in action and "final" in action['debug']:
+            sys.stderr.write("> Updated entries:\n")
+            json.dump([v for k, v in artifacts.items() if k in the_ids],
+                      sys.stderr, indent=4, sort_keys=True)
+            sys.stderr.write("\n")
 
     return list(artifacts.values())
 
@@ -321,7 +362,10 @@ def apply_depends(artifact, env, depends):
             if "copy-as" in v:
                 new_artifact[v['copy-as']] = artifact[k]
             elif "interpolate" in v:
-                new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
+                try:
+                    new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
+                except KeyError as e:
+                    return None
     return new_artifact
 
 
@@ -355,7 +399,10 @@ def apply_executor_to_artifacts(artifacts, env, executor):
             cmd = executor['command'].format(**dict_with_defaults(artifact, env))
         except KeyError:
             continue
-        r = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
+        if log_level > 0:
+            sys.stderr.write("Executing commandline: {}\n".format(cmd))
+        r = subprocess.run(cmd, stdout=subprocess.PIPE,
+                           universal_newlines=True, shell=True, check=True)
         for line in r.stdout.splitlines():
             line_elems = line.split(sep=executor.get('split', None))
             if len(line_elems) != expected_num_fields:
@@ -722,6 +769,7 @@ def do_test():
         ],
         "id": "{prefix}"
     }, {
+        "depends": {},
         "defaults": {"o2": "v2"},
         "executor": {"command": "for i in `seq 2` ; do echo {prefix} $i; done", "return-attributes": ["o0", "o1"]},
         "id": "ex-{o0}-{o1}"
