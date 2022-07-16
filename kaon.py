@@ -11,13 +11,12 @@ introduce, modify, remove dictionary entries.
 
 import json
 import sys
-import os.path
 import re
 import itertools
 import argparse
 import subprocess
 
-log_level = 1
+LOG_LEVEL = 1
 
 #
 # Check schema types
@@ -30,187 +29,207 @@ def show_error(check_value, msg, path):
     """
 
     if not check_value:
-        raise ValueError("Error in path `{}`: {}".format(path, msg))
+        raise ValueError(f"Error in path `{path}`: {msg}")
 
 
-def check_string(x, path):
+def check_string(value, path):
     """
     Check that the input is a string.
     """
 
-    show_error(isinstance(x, str),
+    show_error(isinstance(value, str),
                "unexpected type, it should be a string", path)
 
 
-def check_list(x, path):
+def check_list(value, path):
     """
     Check that the input is a list.
     """
 
-    show_error(isinstance(x, list),
+    show_error(isinstance(value, list),
                "unexpected type, it should be a list", path)
 
 
-def check_dict(x, path):
+def check_dict(value, path):
     """
     Check that the input is a dictionary.
     """
 
-    show_error(isinstance(x, dict),
+    show_error(isinstance(value, dict),
                "unexpected type, it should be an object (dictionary)", path)
 
 
-def check_flat_dict(x, path):
+def check_flat_dict(value, path):
     """
     Check that the input is a dictionary with keys and values as strings.
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
+    check_dict(value, path)
+    for k, v in value.items():
         show_error(isinstance(k, str) and isinstance(v, str),
-                   "unexpected type, the key and the value should be strings", path + "/" + k)
+                   "unexpected type, the key and the value should be strings", f"{path}/{k}")
 
 
-def check_list_flat_dicts(x, path):
+def check_list_flat_dicts(value, path):
     """
     Check that the input a list of flat dictionaries
     """
 
-    check_list(x, path)
-    for i, v in enumerate(x):
-        check_flat_dict(v, "{}/[{}]".format(path, i))
+    check_list(value, path)
+    for i, v in enumerate(value):
+        check_flat_dict(v, f"{path}/[{i}]")
 
 
-def check_flat_list(x, path):
+def check_flat_list(value, path):
     """
     Check that the input is a list of strings.
     """
 
-    check_list(x, path)
-    for i, v in enumerate(x):
-        check_string(v, "{}/[{}]".format(path, i))
+    check_list(value, path)
+    for i, v in enumerate(value):
+        check_string(v, f"{path}/[{i}]")
 
 
-def check_depends_value_dict(x, path):
+def check_depends_value_dict(value, path):
     """
     Check that the input is a dictionary with possible entries `matching-re`, `interpolate`,
     and `copy-as`.
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
+    check_dict(value, path)
+    for k, v in value.items():
         show_error(k in ("matching-re", "copy-as", "interpolate"),
-                   "unexpected key, it can be `matching-re`, `interpolate`, or `copy-as`", path + "/" + k)
-        check_string(v, path + "/" + k)
-    show_error('interpolate' not in x or 'copy-as' not in x,
-               "unexpected key, `interpolate` and `copy-as` cannot be together", x)
+                   "unexpected key, it can be `matching-re`, `interpolate`, or `copy-as`",
+                   f"{path}/{k}")
+        check_string(v, f"{path}/{k}")
+    show_error('interpolate' not in value or 'copy-as' not in value,
+               "unexpected key, `interpolate` and `copy-as` cannot be together", value)
 
 
-def check_depends(x, path):
+def check_depends(value, path):
     """
     Check that the input is a dictionary where the keys are strings and the values can be a list
     of strings or a dictionary satisfying depends value dictionary restriction.
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
+    check_dict(value, path)
+    for k, v in value.items():
         check_string(k, path)
         if isinstance(v, list):
-            check_flat_list(v, path + "/" + k)
+            check_flat_list(v, f"{path}/{k}")
         elif isinstance(v, dict):
-            check_depends_value_dict(v, path + "/" + k)
+            check_depends_value_dict(v, f"{path}/{k}")
         else:
-            show_error(False, "unexpected value, it should be a list or an object", path + "/" + k)
+            show_error(False, "unexpected value, it should be a list or an object", f"{path}/{k}")
 
 
-def check_executor(x, path):
+def check_executor(value, path):
     """
     Check that the input is a dictionary where the keys are `command`, with a string value,
     `return-attributes` with a plain list, and optionally `split` with a string.
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
+    check_dict(value, path)
+    for k, v in value.items():
         show_error(k in ("command", "return-attributes", "split"),
-                   "unexpected key, it can be `command` or `return-attributes`", path + "/" + k)
+                   "unexpected key, it can be `command` or `return-attributes`", f"{path}/{k}")
         check_string(k, path)
         if k == "command":
-            check_string(v, path + "/" + k)
+            check_string(v, f"{path}/{k}")
         elif k == "return-attributes":
-            check_flat_list(v, path + "/" + k)
+            check_flat_list(v, f"{path}/{k}")
         elif k == 'split':
-            check_string(v, path + "/" + k)
-    show_error("command" in x and "return-attributes" in x,
+            check_string(v, f"{path}/{k}")
+    show_error("command" in value and "return-attributes" in value,
                "missing keys, expected `command` and `return-attributes` as keys", path)
 
 
-def check_action(x, path):
+def check_action(value, path):
     """
     Check that the input is a dictionary with keys `id`, `depends`, `executor` (optional), `values`
     (optional), `defaults` (optional), and `update` (optional).
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
+    check_dict(value, path)
+    for k, v in value.items():
         if k == "name":
-            check_string(v, path + "/name")
+            check_string(v, f"{path}/{k}")
         elif k == "description":
-            check_string(v, path + "/description")
+            check_string(v, f"{path}/description")
         elif k == "id":
-            check_string(v, path + "/id")
+            check_string(v, f"{path}/id")
         elif k == "depends":
-            check_depends(v, path + "/depends")
+            check_depends(v, f"{path}/depends")
         elif k == "executor":
-            check_executor(v, path + "/executor")
+            check_executor(v, f"{path}/executor")
         elif k == "values":
-            check_list_flat_dicts(v, path + "/values")
+            check_list_flat_dicts(v, f"{path}/values")
         elif k == "defaults":
-            check_flat_dict(v, path + "/defaults")
+            check_flat_dict(v, f"{path}/defaults")
         elif k == "update":
-            check_flat_dict(v, path + "/update")
+            check_flat_dict(v, f"{path}/update")
         elif k == "debug":
-            check_flat_list(v, path + "/debug")
+            check_flat_list(v, f"{path}/debug")
         else:
-            show_error(False, "unexpected key", path + "/" + k)
-    show_error("id" in x, "expected key `id` is missing", path)
+            show_error(False, "unexpected key", f"{path}/{k}")
+    show_error("id" in value, "expected key `id` is missing", path)
 
 
-def check_schema(x):
+def check_schema(value):
     """
     Check that the input is a list of dictionaries satisfying the scheme.
     """
 
-    check_list(x, "/")
-    for i, v in enumerate(x):
-        action_name = "[{}]".format("name='{}'".format(v['name']) if isinstance(v, dict) and 'name' in v else i)
+    check_list(value, "/")
+    for i, v in enumerate(value):
+        action_name = f"[name='{v['name']}']" if isinstance(v, dict) and 'name' in v else f"[{i}]"
         check_action(v, action_name)
 
 
-def check_constrain_item(x, path):
+def check_constrain_item(value, path):
     """
     Check that the input is a dictionary with possible values a list of strings or a string.
     """
 
-    check_dict(x, path)
-    for k, v in x.items():
-        check_string(k, x)
+    check_dict(value, path)
+    for k, v in value.items():
+        check_string(k, value)
         if not isinstance(v, str):
-            check_flat_list(v, path + "/" + k)
+            check_flat_list(v, f"{path}/{k}")
 
 
-def check_constrains(x):
+def check_constrains(value):
     """
     Check that the input is a list of dictionaries satisfying a constrain schema.
     """
 
-    check_list(x, "/")
-    for i, v in enumerate(x):
-        check_constrain_item(v, "[{}]".format(i))
+    check_list(value, "/")
+    for i, v in enumerate(value):
+        check_constrain_item(v, f"[{i}]")
 
 
 #
 # Execute schemas
 #
+
+def print_artifacts_for_debugging(artifacts, action, step):
+    """
+    Print artifacts in JSON format for helping user debug the schema.
+    """
+
+    if "debug" not in action or step not in action['debug']:
+        return
+
+    headers = {
+        "depends": "Entries after applying `depends`",
+        "values": "Entries after applying `values`",
+        "executor": "Entries after applying `executor`",
+        "update": "Entries after applying `update`",
+        "final": " Modified entries by the action",
+    }
+    sys.stderr.write(f"> {headers[step]}\n")
+    json.dump(artifacts, sys.stderr, indent=4, sort_keys=True)
+    sys.stderr.write("\n")
 
 
 def execute_schema(schema, constrained_view, env):
@@ -220,20 +239,18 @@ def execute_schema(schema, constrained_view, env):
 
     artifacts = {}
     for i, action in enumerate(schema):
-        action_name = action.get('name', "[{}]".format(i))
+        action_name = action.get('name', f"[{i}]")
         if "debug" in action:
-            sys.stderr.write("Running action `{}`\n".format(action_name))
+            sys.stderr.write(f"Running action `{action_name}`\n")
 
         # a) Apply depends
         filtered_artifacts = apply_depends_to_artifacts(
             artifacts.values(), [{}], env, action['depends']) if 'depends' in action else [{}]
-        if "debug" in action and "depends" in action['debug']:
-            sys.stderr.write("> Entries after applying depends:\n")
-            json.dump(filtered_artifacts, sys.stderr, indent=4, sort_keys=True)
-            sys.stderr.write("\n")
+        print_artifacts_for_debugging(filtered_artifacts, action, "depends")
 
         # b) Apply defaults
         apply_defaults(filtered_artifacts, action.get('defaults', {}))
+        print_artifacts_for_debugging(filtered_artifacts, action, "defaults")
 
         # c) Apply values
         if "values" in action:
@@ -241,6 +258,7 @@ def execute_schema(schema, constrained_view, env):
                              for d in action['values'] for artifact in filtered_artifacts]
         else:
             new_artifacts = filtered_artifacts
+        print_artifacts_for_debugging(new_artifacts, action, "values")
 
         # e) Apply executor
         if 'executor' in action:
@@ -248,49 +266,38 @@ def execute_schema(schema, constrained_view, env):
                 new_artifacts = apply_executor_to_artifacts(new_artifacts, env, action['executor'])
             except Exception as e:
                 raise Exception(
-                    "Error in executing executor in action with name `{}`.".format(action_name)) from e
-            if "debug" in action and "executor" in action['debug']:
-                sys.stderr.write("> Entries after applying executor:\n")
-                json.dump(new_artifacts, sys.stderr, indent=4, sort_keys=True)
-                sys.stderr.write("\n")
+                    f"Error in executing executor in action with name `{action_name}`.") from e
+        print_artifacts_for_debugging(new_artifacts, action, "executor")
 
-        # f) Apply update and add/update the entry in artifacts
+        # f) Apply update
+        if "update" in action:
+            for artifact in new_artifacts:
+                artifact.update(action["update"])
+        print_artifacts_for_debugging(new_artifacts, action, "update")
+
+        # g) Merge the new entries into artifacts
         the_ids = set()
-        updated_artifacts = []
+        track_updated_entries = ("debug" in action and "final" in action['debug'])
         for artifact in new_artifacts:
-            # Enforce some values
-            artifact.update(action.get('update', {}))
-            if "debug" in action and "update" in action['debug']:
-                updated_artifacts.append(artifact)
-
             # Compute the identification
             try:
                 the_id = action['id'].format(**dict_with_defaults(artifact, env))
             except KeyError as e:
                 raise Exception(
-                    "Error interpolating the id in action with name `{}` for entry {}.".format(action_name, artifact)) from e
+                    f"Error interpolating the id in action with name `{action_name}` for entry {artifact}.") from e
             if the_id in artifacts:
                 artifacts[the_id].update(artifact)
             else:
                 artifacts[the_id] = artifact
-
-            if "debug" in action and "final" in action['debug']:
+            if track_updated_entries:
                 the_ids.add(the_id)
-
-        if "debug" in action and "update" in action['debug']:
-            sys.stderr.write("> Entries after applying update:\n")
-            json.dump(updated_artifacts, sys.stderr, indent=4, sort_keys=True)
-            sys.stderr.write("\n")
-
-        if "debug" in action and "final" in action['debug']:
-            sys.stderr.write("> Updated entries:\n")
-            json.dump([v for k, v in artifacts.items() if k in the_ids],
-                      sys.stderr, indent=4, sort_keys=True)
-            sys.stderr.write("\n")
+        if track_updated_entries:
+            updated_entries = [v for k, v in artifacts.items() if k in the_ids]
+            print_artifacts_for_debugging(updated_entries, action, "final")
 
     # Apply the constrains
-    artifacts = [
-        artifact for artifact in artifacts.values() if is_artifact_in_constrained_view(artifact, constrained_view)]
+    artifacts = [artifact for artifact in artifacts.values()
+                 if is_artifact_in_constrained_view(artifact, constrained_view)]
     return artifacts
 
 
@@ -349,23 +356,22 @@ def apply_depends(artifact, env, depends):
             return None
         if isinstance(v, list) and artifact[k] not in v:
             return None
-        else:
-            if "matching-re" in v:
-                try:
-                    m = re.fullmatch(
-                        v['matching-re'].format(**dict_with_defaults(artifact, env)), artifact[k])
-                except KeyError:
-                    return None
-                if not m:
-                    return None
-                new_artifact.update(m.groupdict())
-            if "copy-as" in v:
-                new_artifact[v['copy-as']] = artifact[k]
-            elif "interpolate" in v:
-                try:
-                    new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
-                except KeyError as e:
-                    return None
+        if "matching-re" in v:
+            try:
+                m = re.fullmatch(
+                    v['matching-re'].format(**dict_with_defaults(artifact, env)), artifact[k])
+            except KeyError:
+                return None
+            if not m:
+                return None
+            new_artifact.update(m.groupdict())
+        if "copy-as" in v:
+            new_artifact[v['copy-as']] = artifact[k]
+        elif "interpolate" in v:
+            try:
+                new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
+            except KeyError as e:
+                return None
     return new_artifact
 
 
@@ -399,16 +405,15 @@ def apply_executor_to_artifacts(artifacts, env, executor):
             cmd = executor['command'].format(**dict_with_defaults(artifact, env))
         except KeyError:
             continue
-        if log_level > 0:
-            sys.stderr.write("Executing commandline: {}\n".format(cmd))
+        if LOG_LEVEL > 0:
+            sys.stderr.write(f"Executing commandline: {cmd}\n")
         r = subprocess.run(cmd, stdout=subprocess.PIPE,
                            universal_newlines=True, shell=True, check=True)
         for line in r.stdout.splitlines():
             line_elems = line.split(sep=executor.get('split', None))
             if len(line_elems) != expected_num_fields:
                 raise Exception(
-                    'Expected an output with {} field(s) from output `{}`'.format(
-                        expected_num_fields, line))
+                    f'Expected an output with {expected_num_fields} field(s) from output `{line}`')
             new_artifact = dict(**artifact)
             new_artifact.update(zip(executor['return-attributes'], line_elems))
             new_artifacts.append(new_artifact)
@@ -430,9 +435,10 @@ def get_schema_from_json(json_files):
             f = sys.stdin if filename == '-' else open(filename, 'rt')
             schema_item = json.load(f)
             check_schema(schema_item)
-            f.close()
+            if filename != '-':
+                f.close()
         except Exception as e:
-            raise ValueError("KaoN schema error in file {}".format(filename)) from e
+            raise ValueError(f"KaoN schema error in file {filename}") from e
         schema.extend(schema_item)
     return schema
 
@@ -442,6 +448,8 @@ def normalize_value_constrain(values):
     Return a set of possible options allowed for each attribute.
     """
 
+    if not isinstance(values, list):
+        values = [values]
     s = set()
     for value in values:
         if re.fullmatch(r"\d+:\d+", value):
@@ -470,8 +478,8 @@ def get_constrains_from_json(json_files):
         except Exception as e:
             raise ValueError("KaoN constrains error in file {}:") from e
         # Normalize the constrains
-        normalize_constrains_item = [dict([(k, normalize_value_constrain(v if isinstance(
-            v, list) else [v])) for k, v in constrain.items()]) for constrain in constrains_item]
+        normalize_constrains_item = [{k: normalize_value_constrain(v) for k, v in constrain.items()}
+                                     for constrain in constrains_item]
         constrains.extend(normalize_constrains_item)
     return constrains
 
@@ -513,7 +521,8 @@ def print_artifacts_as_table(artifacts, output_attributes, print_headers, column
     artifacts = restrict_output_attributes(artifacts, output_attributes)
     if output_attributes is None:
         output_attributes = list(
-            set([k for artifact in artifacts for k in artifact.keys() if k not in ignore_attributes]))
+            set([k for artifact in artifacts for k in artifact.keys()
+                 if k not in ignore_attributes]))
 
     table = [
         [artifact[k] if k in artifact else "_null_" for k in output_attributes]
@@ -526,8 +535,9 @@ def print_artifacts_as_table(artifacts, output_attributes, print_headers, column
         column_lengths = [max(len(attr), max_col_len)
                           for attr, max_col_len in zip(row, column_lengths)]
     if table:
-        print("\n".join([column_separator.join([v.ljust(col_len)
-                                            for v, col_len in zip(row, column_lengths)]) for row in table]))
+        print("\n".join([
+            column_separator.join([v.ljust(col_len)
+                                   for v, col_len in zip(row, column_lengths)]) for row in table]))
 
 
 def print_artifacts_as_json(artifacts, output_attributes):
@@ -571,7 +581,8 @@ def get_options_from_schema(schema):
             extended_entry.update(action.get('update', {}))
             if "option-name" in extended_entry and "option-doc" in extended_entry:
                 r[extended_entry['option-name']] = (extended_entry['option-name'],
-                                                    extended_entry['option-doc'], extended_entry.get('option-group', ''))
+                                                    extended_entry['option-doc'],
+                                                    extended_entry.get('option-group', ''))
     return r.values()
 
 
@@ -587,8 +598,9 @@ def get_variables_from_schema(schema):
             apply_defaults(extended_entry, action.get('defaults', {}))
             extended_entry.update(action.get('update', {}))
             if "variable-name" in extended_entry and "variable-doc" in extended_entry:
-                r[extended_entry['variable-name']] = (extended_entry['variable-name'], extended_entry.get(
-                    'variable-default', None), extended_entry['variable-doc'])
+                r[extended_entry['variable-name']] = (extended_entry['variable-name'],
+                                                      extended_entry.get('variable-default', None),
+                                                      extended_entry['variable-doc'])
     return r.values()
 
 
@@ -661,11 +673,11 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
         sys.exit(1)
 
     if "inputs" not in args[0] or not args[0].inputs:
-        help = args[0].help if "help" in args[0] else False
-        if not help:
+        show_help = args[0].help if "help" in args[0] else False
+        if not show_help:
             print("Invalid arguments")
         parser.print_help()
-        sys.exit(0 if help else 1)
+        sys.exit(0 if show_help else 1)
 
     # Read schemas
     schema = get_schema_from_json(args[0].inputs)
@@ -697,11 +709,12 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
             group_attributes[g] = parser.add_argument_group(
                 'Options for {}'.format(g if g else 'attributes'))
         group_attributes[g].add_argument(
-            '--' + k, nargs='+', required=False, help=v, metavar='value')
+            f'--{k}', nargs='+', required=False, help=v, metavar='value')
     group_attributes = parser.add_argument_group('Variables')
     for k, default, doc in attribute_variables:
         group_attributes.add_argument(
-            '--' + k, nargs=1, required=default is None, help=doc, metavar='value', default=[default])
+            f'--{k}', nargs=1, required=default is None, help=doc, metavar='value',
+            default=[default])
     args = parser.parse_args()
 
     # Show help
@@ -755,14 +768,14 @@ def do_test():
         "update": {"kind": "ensemble"},
         "id": "ensemble-{name}"
     }, {
-        "depends": {"name": {"matching-re": "ensemble(?P<num>\d+)", "copy-as": "alias"}},
+        "depends": {"name": {"matching-re": r"ensemble(?P<num>\d+)", "copy-as": "alias"}},
         "id": "ensemble-{name}"
     }]
     check_schema(schema)
     true_artifacts = [{"kind": "ensemble", "name": "ensemble1", "alias": "ensemble1", "num": "1"},
                       {"kind": "ensemble", "name": "ensemble2", "alias": "ensemble2", "num": "2"}]
-    assert(execute_schema(schema, [{}], {}) == true_artifacts)
-    assert(execute_schema(schema, [{'name': ['ensemble2']}], {}) == true_artifacts[1:])
+    assert execute_schema(schema, [{}], {}) == true_artifacts
+    assert execute_schema(schema, [{'name': ['ensemble2']}], {}) == true_artifacts[1:]
 
     schema = [{
         "values": [{"option-name": "prefix", "option-doc": "prefix doc"}],
@@ -777,7 +790,10 @@ def do_test():
     }, {
         "depends": {},
         "defaults": {"o2": "v2"},
-        "executor": {"command": "for i in `seq 2` ; do echo {prefix} $i; done", "return-attributes": ["o0", "o1"]},
+        "executor": {
+            "command": "for i in `seq 2` ; do echo {prefix} $i; done",
+            "return-attributes": ["o0", "o1"]
+        },
         "id": "ex-{o0}-{o1}"
     }]
     check_schema(schema)
@@ -787,7 +803,7 @@ def do_test():
                       {"prefix": "pre0", "o0": "pre0", "o1": "2", "o2": "v2"},
                       {"prefix": "pre1", "o0": "pre1", "o1": "1", "o2": "v2"},
                       {"prefix": "pre1", "o0": "pre1", "o1": "2", "o2": "v2"}]
-    assert(execute_schema(schema, [{}], {}) == true_artifacts)
+    assert execute_schema(schema, [{}], {}) == true_artifacts
 
 
 if __name__ == "__main__":
