@@ -172,8 +172,6 @@ def check_action(x, path):
             check_flat_list(v, path + "/debug")
         else:
             show_error(False, "unexpected key", path + "/" + k)
-    show_error("values" not in x or ("depends" not in x and "executor" not in x),
-               "unexpected keys, if `values` is present, `depends` or `executor` isn't allowed", path)
     show_error("id" in x, "expected key `id` is missing", path)
 
 
@@ -184,7 +182,8 @@ def check_schema(x):
 
     check_list(x, "/")
     for i, v in enumerate(x):
-        check_action(v, "[{}]".format(i))
+        action_name = "[{}]".format("name='{}'".format(v['name']) if isinstance(v, dict) and 'name' in v else i)
+        check_action(v, action_name)
 
 
 def check_constrain_item(x, path):
@@ -227,7 +226,7 @@ def execute_schema(schema, constrained_view, env):
 
         # a) Apply depends
         filtered_artifacts = apply_depends_to_artifacts(
-            artifacts.values(), constrained_view, env, action['depends']) if 'depends' in action else [{}]
+            artifacts.values(), [{}], env, action['depends']) if 'depends' in action else [{}]
         if "debug" in action and "depends" in action['debug']:
             sys.stderr.write("> Entries after applying depends:\n")
             json.dump(filtered_artifacts, sys.stderr, indent=4, sort_keys=True)
@@ -240,8 +239,6 @@ def execute_schema(schema, constrained_view, env):
         if "values" in action:
             new_artifacts = [dict_with_defaults(d, artifact)
                              for d in action['values'] for artifact in filtered_artifacts]
-            new_artifacts = [
-                artifact for artifact in new_artifacts if is_artifact_in_constrained_view(artifact, constrained_view)]
         else:
             new_artifacts = filtered_artifacts
 
@@ -291,7 +288,10 @@ def execute_schema(schema, constrained_view, env):
                       sys.stderr, indent=4, sort_keys=True)
             sys.stderr.write("\n")
 
-    return list(artifacts.values())
+    # Apply the constrains
+    artifacts = [
+        artifact for artifact in artifacts.values() if is_artifact_in_constrained_view(artifact, constrained_view)]
+    return artifacts
 
 
 def apply_defaults(artifacts, defaults):
@@ -525,8 +525,8 @@ def print_artifacts_as_table(artifacts, output_attributes, print_headers, column
     for row in table:
         column_lengths = [max(len(attr), max_col_len)
                           for attr, max_col_len in zip(row, column_lengths)]
-
-    print("\n".join([column_separator.join([v.ljust(col_len)
+    if table:
+        print("\n".join([column_separator.join([v.ljust(col_len)
                                             for v, col_len in zip(row, column_lengths)]) for row in table]))
 
 
@@ -563,16 +563,16 @@ def get_options_from_schema(schema):
     Get entries with attributes `option-name` and `option-doc`.
     """
 
-    r = []
+    r = {}
     for action in schema:
         for entry in action.get('values', []):
             extended_entry = dict(**entry)
             apply_defaults(extended_entry, action.get('defaults', {}))
             extended_entry.update(action.get('update', {}))
             if "option-name" in extended_entry and "option-doc" in extended_entry:
-                r.append(
-                    (extended_entry['option-name'], extended_entry['option-doc'], extended_entry.get('option-group', '')))
-    return r
+                r[extended_entry['option-name']] = (extended_entry['option-name'],
+                                                    extended_entry['option-doc'], extended_entry.get('option-group', ''))
+    return r.values()
 
 
 def get_variables_from_schema(schema):
@@ -580,10 +580,16 @@ def get_variables_from_schema(schema):
     Get entries with attributes `variable-name` and `variable-doc`.
     """
 
-    return [(entry['variable-name'], entry.get('variable-default', None),
-             entry['variable-doc']) for action in schema
-            if 'values' in action for entry in action['values']
-            if "variable-name" in entry and "variable-doc" in entry]
+    r = {}
+    for action in schema:
+        for entry in action.get('values', []):
+            extended_entry = dict(**entry)
+            apply_defaults(extended_entry, action.get('defaults', {}))
+            extended_entry.update(action.get('update', {}))
+            if "variable-name" in extended_entry and "variable-doc" in extended_entry:
+                r[extended_entry['variable-name']] = (extended_entry['variable-name'], extended_entry.get(
+                    'variable-default', None), extended_entry['variable-doc'])
+    return r.values()
 
 
 def get_constrained_view(constrains, view):
