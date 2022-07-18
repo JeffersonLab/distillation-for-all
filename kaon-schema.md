@@ -51,7 +51,9 @@ _select_item = [ "and" _select_item_... ] or
                [ "joint" select_item_... ] or
                _entry_constrains_
 
-_entry_constrains_ = { _property_name_: _property_constrain_ }
+_entry_constrains_ = { _property_name_: _property_value or
+                                        [_property_value_ ] or
+                                        _property_constrain_ }
 
 _property_constrain_ = {
     /*optional*/ "interpolate": _property_value_,

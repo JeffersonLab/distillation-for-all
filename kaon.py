@@ -101,7 +101,7 @@ def is_property_value(value):
 
     return (isinstance(value, str) or
             isinstance(value, list) and
-            len(value) > 1 and value[0] in ('broken-line', 'multiple-lines') and
+            len(value) > 0 and value[0] in ('broken-line', 'multiple-lines') and
             all([isinstance(v, str) for v in value[1:]]))
 
 
@@ -160,7 +160,9 @@ def check_property_constrains(value, path):
         'matching-re': check_property_value
     }
     for k, v in value.items():
-        check_dict_with_keywords(v, f"{path}/{k}", keywords)
+        if not(is_property_value(v) or
+                isinstance(v, list) and all([is_property_value(vi) for vi in v])):
+            check_dict_with_keywords(v, f"{path}/{k}", keywords)
 
 
 def check_select(value, path):
@@ -447,6 +449,16 @@ def get_entry_after_property_constrains(entry, entry_constrains, env):
 
     return_entry = dict(**entry)
     for prop, prop_constrains in entry_constrains.items():
+        if is_property_value(prop_constrains):
+            if prop not in entry or get_property_value(prop_constrains) != entry[prop]:
+                return None
+            continue
+        if isinstance(prop_constrains, list) and all([is_property_value(v) for v in prop_constrains]):
+            if prop not in entry or entry[prop] not in [get_property_value(v) for v in prop_constrains]:
+                return None
+            continue
+
+        assert isinstance(prop_constrains, dict)
         if not prop_constrains:
             prop_constrains = {'in': None}
         if "interpolate" in prop_constrains:
