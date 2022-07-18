@@ -16,7 +16,8 @@ import itertools
 import argparse
 import subprocess
 
-LOG_LEVEL = 1
+# Log levels, for now, 0 (no logging) and 1 (some logging)
+LOG_LEVEL = 0
 
 #
 # Check schema types
@@ -59,25 +60,13 @@ def check_dict(value, path):
                "unexpected type, it should be an object (dictionary)", path)
 
 
-def check_flat_dict(value, path):
+def check_list_or_dict(value, path):
     """
-    Check that the input is a dictionary with keys and values as strings.
-    """
-
-    check_dict(value, path)
-    for k, v in value.items():
-        show_error(isinstance(k, str) and isinstance(v, str),
-                   "unexpected type, the key and the value should be strings", f"{path}/{k}")
-
-
-def check_list_flat_dicts(value, path):
-    """
-    Check that the input a list of flat dictionaries
+    Check that the input is a dictionary or a list.
     """
 
-    check_list(value, path)
-    for i, v in enumerate(value):
-        check_flat_dict(v, f"{path}/[{i}]")
+    show_error(isinstance(value, (list, dict)),
+               "unexpected type, expected either an object (dictionary) or a list", path)
 
 
 def check_flat_list(value, path):
@@ -90,89 +79,155 @@ def check_flat_list(value, path):
         check_string(v, f"{path}/[{i}]")
 
 
-def check_depends_value_dict(value, path):
+def check_dict_with_keywords(value, path, keywords):
     """
-    Check that the input is a dictionary with possible entries `matching-re`, `interpolate`,
-    and `copy-as`.
-    """
-
-    check_dict(value, path)
-    for k, v in value.items():
-        show_error(k in ("matching-re", "copy-as", "interpolate"),
-                   "unexpected key, it can be `matching-re`, `interpolate`, or `copy-as`",
-                   f"{path}/{k}")
-        check_string(v, f"{path}/{k}")
-    show_error('interpolate' not in value or 'copy-as' not in value,
-               "unexpected key, `interpolate` and `copy-as` cannot be together", value)
-
-
-def check_depends(value, path):
-    """
-    Check that the input is a dictionary where the keys are strings and the values can be a list
-    of strings or a dictionary satisfying depends value dictionary restriction.
+    Check that input is a dictionary with keys in `keywords` and values passing the check function
+    associated as the `keywords` dictionary values.
     """
 
     check_dict(value, path)
+    all_keywords = ", ".join(keywords.keys())
     for k, v in value.items():
-        check_string(k, path)
-        if isinstance(v, list):
-            check_flat_list(v, f"{path}/{k}")
-        elif isinstance(v, dict):
-            check_depends_value_dict(v, f"{path}/{k}")
-        else:
-            show_error(False, "unexpected value, it should be a list or an object", f"{path}/{k}")
+        show_error(k in keywords,
+                   f"unexpected key, it should be one of {all_keywords}.", f"{path}/{k}")
+        keywords[k](v, f"{path}/{k}")
 
 
-def check_executor(value, path):
+def is_property_value(value):
     """
-    Check that the input is a dictionary where the keys are `command`, with a string value,
-    `return-attributes` with a plain list, and optionally `split` with a string.
+    Check that the input is a JSON string or [ "broken-line", "string"... ] or
+    [ "multiple-lines", "string"... ].
+    """
+
+    return (isinstance(value, str) or
+            isinstance(value, list) and
+            len(value) > 1 and value[0] in ('broken-line', 'multiple-lines') and
+            all([isinstance(v, str) for v in value[1:]]))
+
+
+def check_property_value(value, path):
+    """
+    Check "JSON string" or [ "broken-line", "JSON string"... ] or
+    [ "multiple-lines", "JSON string"... ].
+    """
+
+    show_error(
+        isinstance(value, str) or
+        isinstance(value, list) and len(value) > 0 and value[0] in (
+            'broken-line', 'multiple-lines'),
+        'expected a string or a list headed with "broken-line" or "multiple-lines" '
+        'and the remaining elements being strings', path)
+    if isinstance(value, list):
+        for i, v in enumerate(value[1:]):
+            check_string(v, f"{path}/[{i+1}]")
+
+
+def check_property_constrain_in(value, path):
+    """
+    Check [ _property_value_ ] or null
+    """
+
+    check_error(isinstance(value, (None, list)), "expected `null` or a list of strings", path)
+    if isinstance(value, list):
+        for i, v in enumerate(value):
+            check_property_value(v, f"{path}/[i]")
+
+
+def check_string_or_null(value, path):
+    """
+    Check that the input is either a string or null
+    """
+
+    check_error(isinstance(value, (str, None)), "expected either a string or `null`", path)
+
+
+def check_property_constrains(value, path):
+    """
+    Check _property_constrain_ = {
+        /*optional*/ "interpolate": _property_value_,
+        /*optional*/ "in": [ _property_value_ ] or null
+        /*optional*/ "copy-to": _property_name_,
+        /*optional*/ "move-to": _property_name_ or null,
+        /*optional*/ "matching-re": _property_value_ }
     """
 
     check_dict(value, path)
+    keywords = {
+        'interpolate': check_property_value,
+        'in': check_property_constrain_in,
+        'copy-to': check_string,
+        'move-to': check_string_or_null,
+        'matching-re': check_property_value
+    }
     for k, v in value.items():
-        show_error(k in ("command", "return-attributes", "split"),
-                   "unexpected key, it can be `command` or `return-attributes`", f"{path}/{k}")
-        check_string(k, path)
-        if k == "command":
-            check_string(v, f"{path}/{k}")
-        elif k == "return-attributes":
-            check_flat_list(v, f"{path}/{k}")
-        elif k == 'split':
-            check_string(v, f"{path}/{k}")
-    show_error("command" in value and "return-attributes" in value,
-               "missing keys, expected `command` and `return-attributes` as keys", path)
+        check_dict_with_keywords(v, f"{path}/{k}", keywords)
 
 
-def check_action(value, path):
+def check_select(value, path):
     """
-    Check that the input is a dictionary with keys `id`, `depends`, `executor` (optional), `values`
-    (optional), `defaults` (optional), and `update` (optional).
+    Check that the input is either an entry constrain or a list of empty constrains headed by the
+    string "and" or "joint".
     """
 
-    check_dict(value, path)
-    for k, v in value.items():
-        if k == "name":
-            check_string(v, f"{path}/{k}")
-        elif k == "description":
-            check_string(v, f"{path}/description")
-        elif k == "id":
-            check_string(v, f"{path}/id")
-        elif k == "depends":
-            check_depends(v, f"{path}/depends")
-        elif k == "executor":
-            check_executor(v, f"{path}/executor")
-        elif k == "values":
-            check_list_flat_dicts(v, f"{path}/values")
-        elif k == "defaults":
-            check_flat_dict(v, f"{path}/defaults")
-        elif k == "update":
-            check_flat_dict(v, f"{path}/update")
-        elif k == "debug":
-            check_flat_list(v, f"{path}/debug")
-        else:
-            show_error(False, "unexpected key", f"{path}/{k}")
-    show_error("id" in value, "expected key `id` is missing", path)
+    check_list_or_dict(value, path)
+    if isinstance(value, dict):
+        check_property_constrains(value, path)
+    elif isinstance(value, list):
+        show_error(len(value) > 1,
+                   "expected either a dictionary or a list with at least two elements", path)
+        show_error(value[0] in ("and", "joint"), 'expected either "and" or "joint"', f"{path}/[0]")
+        for i, entry_constrains in enumerate(value[1:]):
+            check_property_constrains(value, f"{path}/[{i+1}]")
+
+
+def check_modify(value, path):
+    """
+    Check that the input is a dictionary with values a list of  _property_value_ or a list of those.
+    """
+
+    check_list_or_dict(value, path)
+    if isinstance(value, list):
+        for i, v in enumerate(value):
+            check_modify(v, f"{path}/[{i}]")
+    else:
+        for k, v in value.items():
+            check_string(k, path)
+            if not is_property_value(v):
+                check_list(v, f"{path}/{k}")
+                for i, list_value in enumerate(v):
+                    check_property_value(list_value, f"{path}/{k}/[i]")
+
+
+def check_execute(value, path):
+    """
+    Check that the input is a dictionary with {
+        "command": _property_value_,
+        "return-properties": [ _property_name_ ] }
+    """
+
+    check_list_or_dict(value, path)
+    if isinstance(value, list):
+        for i, v in enumerate(value):
+            check_execute(v, f"{path}/[{i}]")
+    else:
+        keywords = {
+            'command': check_property_value,
+            'return-properties': check_flat_list
+        }
+        check_dict_with_keywords(value, path, keywords)
+
+
+def check_show_after(value, path):
+    """
+    Check that the input is a list of any of the following strings:
+    "select" or "modify" or "execute" or "finalize" or "updated-entries"
+    """
+
+    check_list(value, path)
+    for i, v in enumerate(value):
+        show_error(v in ("select", "modify", "execute", "finalize", "updated-entries"),
+                   'expected either "select" or "modify" or "execute" or "finalize" or "updated-entries"',
+                   f"{path}/[i]")
 
 
 def check_schema(value):
@@ -181,9 +236,19 @@ def check_schema(value):
     """
 
     check_list(value, "/")
+    keywords = {
+        'name': check_string,
+        'description': lambda _, __: None,
+        'select': check_select,
+        'modify': check_modify,
+        'execute': check_execute,
+        'finalize': check_modify,
+        'show-after': check_show_after,
+        'id': check_string
+    }
     for i, v in enumerate(value):
         action_name = f"[name='{v['name']}']" if isinstance(v, dict) and 'name' in v else f"[{i}]"
-        check_action(v, action_name)
+        check_dict_with_keywords(v, action_name, keywords)
 
 
 def check_constrain_item(value, path):
@@ -212,24 +277,38 @@ def check_constrains(value):
 # Execute schemas
 #
 
-def print_artifacts_for_debugging(artifacts, action, step):
+def print_entries_for_debugging(entries, action, step):
     """
-    Print artifacts in JSON format for helping user debug the schema.
+    Print entries in JSON format for helping user debug the schema.
     """
 
-    if "debug" not in action or step not in action['debug']:
+    if "show-after" not in action or step not in action['show-after']:
         return
 
-    headers = {
-        "depends": "Entries after applying `depends`",
-        "values": "Entries after applying `values`",
-        "executor": "Entries after applying `executor`",
-        "update": "Entries after applying `update`",
-        "final": " Modified entries by the action",
-    }
-    sys.stderr.write(f"> {headers[step]}\n")
-    json.dump(artifacts, sys.stderr, indent=4, sort_keys=True)
+    header = f"Entries after applying `{step}`" if step != "updated-entries" else "Updated entries"
+    sys.stderr.write(f"> {header}\n")
+    json.dump(entries, sys.stderr, indent=4, sort_keys=True)
     sys.stderr.write("\n")
+
+
+def make_a_list(value):
+    """
+    Return [value] if value isn't a list. Otherwise return value.
+    """
+
+    return value if isinstance(value, list) else [value]
+
+
+def get_property_value(value):
+    """
+    Return a string or a list of strings."
+    """
+
+    if is_property_value(value):
+        if isinstance(value, str):
+            return value
+        return ("" if value[0] == 'broken-line' else "\n").join(value[1:])
+    return [get_property_value(v) for v in value]
 
 
 def execute_schema(schema, constrained_view, env):
@@ -237,68 +316,55 @@ def execute_schema(schema, constrained_view, env):
     Execute each of the actions in the schema in the same order as given.
     """
 
-    artifacts = {}
+    entries = {}
     for i, action in enumerate(schema):
         action_name = action.get('name', f"[{i}]")
-        if "debug" in action:
+        if LOG_LEVEL > 0:
             sys.stderr.write(f"Running action `{action_name}`\n")
 
-        # a) Apply depends
-        filtered_artifacts = apply_depends_to_artifacts(
-            artifacts.values(), [{}], env, action['depends']) if 'depends' in action else [{}]
-        print_artifacts_for_debugging(filtered_artifacts, action, "depends")
-
-        # b) Apply defaults
-        apply_defaults(filtered_artifacts, action.get('defaults', {}))
-        print_artifacts_for_debugging(filtered_artifacts, action, "defaults")
-
-        # c) Apply values
-        if "values" in action:
-            new_artifacts = [dict_with_defaults(d, artifact)
-                             for d in action['values'] for artifact in filtered_artifacts]
+        if 'select' in action:
+            active_entries = select_entries(entries.values(), action['select'], env)
         else:
-            new_artifacts = filtered_artifacts
-        print_artifacts_for_debugging(new_artifacts, action, "values")
+            active_entries = [{}]
+        print_entries_for_debugging(active_entries, action, 'select')
 
-        # e) Apply executor
-        if 'executor' in action:
+        active_entries = [
+            new_entry for modify_item in make_a_list(action.get('modify', [{}]))
+            for entry in active_entries for new_entry in modify_entry(entry, modify_item)]
+        print_entries_for_debugging(active_entries, action, 'modify')
+
+        for j, execute_item in enumerate(make_a_list(action.get('execute', []))):
             try:
-                new_artifacts = apply_executor_to_artifacts(new_artifacts, env, action['executor'])
-            except Exception as e:
-                raise Exception(
-                    f"Error in executing executor in action with name `{action_name}`.") from e
-        print_artifacts_for_debugging(new_artifacts, action, "executor")
+                active_entries = execute_entries(active_entries, execute_item, env)
+            except Exeception as e:
+                raise Exception(f"Error in {action_name}/execute/[j].") from e
+        print_entries_for_debugging(active_entries, action, 'execute')
 
-        # f) Apply update
-        if "update" in action:
-            for artifact in new_artifacts:
-                artifact.update(action["update"])
-        print_artifacts_for_debugging(new_artifacts, action, "update")
+        active_entries = [
+            new_entry for modify_item in make_a_list(action.get('finalize', [{}]))
+            for entry in active_entries for new_entry in modify_entry(entry, modify_item)]
+        print_entries_for_debugging(active_entries, action, 'finalize')
 
-        # g) Merge the new entries into artifacts
-        the_ids = set()
-        track_updated_entries = ("debug" in action and "final" in action['debug'])
-        for artifact in new_artifacts:
-            # Compute the identification
+        updated_entries = set()
+        for entry in active_entries if 'id' in action else []:
             try:
-                the_id = action['id'].format(**dict_with_defaults(artifact, env))
+                id = action['id'].format(
+                    **dict_with_defaults(apply_at_defaults_on_entry(entry), env))
             except KeyError as e:
                 raise Exception(
-                    f"Error interpolating the id in action with name `{action_name}` for entry {artifact}.") from e
-            if the_id in artifacts:
-                artifacts[the_id].update(artifact)
-            else:
-                artifacts[the_id] = artifact
-            if track_updated_entries:
-                the_ids.add(the_id)
-        if track_updated_entries:
-            updated_entries = [v for k, v in artifacts.items() if k in the_ids]
-            print_artifacts_for_debugging(updated_entries, action, "final")
+                    f"Error interpolating the id in action with name `{action_name}` for entry {entry}.") from e
+            entries[id] = apply_at_defaults_on_entry(
+                dict_with_defaults(entry, entries[id]) if id in entries else entry)
+            updated_entries.add(id)
+        if 'updated-entries' in action.get('show-after', []):
+            print_entries_for_debugging(
+                [entry for id, entry in entries.items() if id in updated_entries], action,
+                'updated-entries')
 
     # Apply the constrains
-    artifacts = [artifact for artifact in artifacts.values()
-                 if is_artifact_in_constrained_view(artifact, constrained_view)]
-    return artifacts
+    entries = [entry for entry in entries.values()
+               if is_entry_in_constrained_view(entry, constrained_view)]
+    return entries
 
 
 def apply_defaults(artifacts, defaults):
@@ -311,24 +377,24 @@ def apply_defaults(artifacts, defaults):
             artifact.setdefault(k, v)
 
 
-def is_artifact_in_view(artifact, view):
+def is_entry_in_view(entry, view):
     """
-    Return whether the artifact satisfies the constrains in the view.
+    Return whether the entry satisfies the constrains in the view.
     """
 
     for k, v in view.items():
-        if k in artifact and artifact[k] not in v:
+        if k in entry and entry[k] not in v:
             return False
     return True
 
 
-def is_artifact_in_constrained_view(artifact, constrained_view):
+def is_entry_in_constrained_view(entry, constrained_view):
     """
-    Return whether the artifact satisfies any of the views.
+    Return whether the entry satisfies any of the views.
     """
 
     for view in constrained_view:
-        if is_artifact_in_view(artifact, view):
+        if is_entry_in_view(entry, view):
             return True
     return False
 
@@ -344,65 +410,169 @@ def dict_with_defaults(a, defaults):
     return r
 
 
-def apply_depends(artifact, env, depends):
+def apply_at_defaults_on_entry(entry):
     """
-    Return an artifact after applying the constrain and actions in depends or None if the artifact
-    does not satisfies the constrains.
+    If there's a property name ended in "@default" renamed as the property without "@default" if
+    there is not a property with that name.
     """
 
-    new_artifact = dict(**artifact)
-    for k, v in depends.items():
-        if k not in artifact and (isinstance(v, list) or 'interpolate' not in v):
-            return None
-        if isinstance(v, list) and artifact[k] not in v:
-            return None
-        if "matching-re" in v:
+    new_entry = {}
+    suffix = "@default"
+    for k, v in entry.items():
+        if k.endswith(suffix):
+            prop_without_suffix = k[0:-len(suffix)]
+            if prop_without_suffix not in entry:
+                new_entry[prop_without_suffix] = v
+        else:
+            new_entry[k] = v
+    return new_entry
+
+
+def select_entries(entries, select_item, env):
+    """
+    Return entries that passes the select specification.
+    """
+
+    if isinstance(select_item, dict):
+        return get_entries_with_property_constrain(entries, select_item, env)
+
+    entries_list = [select_entries(entries, item, env) for item in select_item[1:]]
+    return joint_entries_list(entries_list) if select_item[0] == "joint" else add_entries_list(entries_list)
+
+
+def get_entry_after_property_constrains(entry, entry_constrains, env):
+    """
+    Return a list of entries after applying the constrains.
+    """
+
+    return_entry = dict(**entry)
+    for prop, prop_constrains in entry_constrains.items():
+        if not prop_constrains:
+            prop_constrains = {'in': None}
+        if "interpolate" in prop_constrains:
             try:
-                m = re.fullmatch(
-                    v['matching-re'].format(**dict_with_defaults(artifact, env)), artifact[k])
+                value = get_property_value(prop_constrains["interpolate"]).format(
+                    **apply_at_defaults_on_entry(dict_with_defaults(entry, env)))
+            except KeyError as e:
+                return None
+            if prop in entry and entry[prop] != value:
+                return None
+            return_entry[prop] = value
+        if 'in' in prop_constrains:
+            if prop_constrains['in'] is None and prop not in entry:
+                return None
+            if len(prop_constrains['in']) == 0 and prop in entry:
+                return None
+            if (len(prop_constrains['in']) > 0 and
+                    (prop not in entry or entry[prop] not in prop_constrains['in'])):
+                return None
+        if 'copy-to' in prop_constrains:
+            if prop not in entry:
+                return None
+            return_entry[prop_constrains['copy-to']] = entry[prop]
+        if 'move-to' in prop_constrains:
+            if prop not in entry:
+                return None
+            if prop_constrains['move-to'] is not None:
+                return_entry[prop_constrains['move-to']] = entry[prop]
+            del return_entry[prop]
+        if "matching-re" in prop_constrains:
+            if "interpolate" in prop_constrains:
+                value = return_entry[prop]
+            elif prop in entry:
+                value = entry[prop]
+            else:
+                return None
+            try:
+                m = re.fullmatch(get_property_value(prop_constrains['matching-re'])
+                                 .format(**apply_at_defaults_on_entry(dict_with_defaults(entry,
+                                                                                         env))),
+                                 value)
             except KeyError:
                 return None
             if not m:
                 return None
-            new_artifact.update(m.groupdict())
-        if "copy-as" in v:
-            new_artifact[v['copy-as']] = artifact[k]
-        elif "interpolate" in v:
-            try:
-                new_artifact[k] = v["interpolate"].format(**dict_with_defaults(artifact, env))
-            except KeyError as e:
-                return None
-    return new_artifact
+            return_entry.update(m.groupdict())
+    return return_entry
 
 
-def apply_depends_to_artifacts(artifacts, constrained_view, env, depends):
+def add_entries_list(entries_list):
     """
-    Filter artifacts that pass the constrains in the view and depends.
+    Add all entries into a single list.
     """
 
-    filtered_artifacts = []
-    for artifact in artifacts:
-        # Ignore artifacts that don't pass the view
-        if not is_artifact_in_constrained_view(artifact, constrained_view):
-            continue
-        # Apply depends
-        new_artifact = apply_depends(artifact, env, depends)
-        # Append new artifact to the list
-        if new_artifact is not None:
-            filtered_artifacts.append(new_artifact)
-    return filtered_artifacts
+    return [entry for entries in entries_list for entry in entries]
 
 
-def apply_executor_to_artifacts(artifacts, env, executor):
+def joint_entries_list(entries_list):
     """
-    Execute some command and return artifacts from the output.
+    Joint entries from all lists without conflicting values for the shared properties.
     """
 
-    new_artifacts = []
-    expected_num_fields = len(executor['return-attributes'])
-    for artifact in artifacts:
+    # Find the common attributes to all entries
+    common_properties = list(set.intersection(
+        *[set(entry.keys()) for entries in entries_list for entry in entries]))
+
+    # Trivial case: if there's no common property just do the Cartesian product of the lists
+    if len(common_properties) == 0:
+        return [{k: v for ti in t for k, v in ti} for t in itertools.product(*entries_list)]
+
+    # Classify the entries of all lists that have the same values for the common properties
+    joint = {}  # tuple(property_value) -> tuple(entries)
+    for i, entries in enumerate(entries_list):
+        for entry in entries:
+            joint_key = tuple([entry[k] for k in common_properties])
+            if joint_key not in joint:
+                joint[joint_key] = tuple([[] for _ in range(len(entries_list))])
+            joint[joint_key][i].append(entry)
+
+    # Return the Cartesian product of all entries with the same shared properties
+    return_entries = []
+    for joint_value in joint.values():
+        for t in itertools.product(*joint_values):
+            new_entry = {}
+            for entry in t:
+                new_entry.update(entry)
+            return_entries.append(new_entry)
+    return return_entries
+
+
+def get_entries_with_property_constrain(entries, entry_constrains, env):
+    """
+    Return a list of entries after applying the constrains.
+    """
+
+    return_entries = []
+    for entry in entries:
+        new_entry = get_entry_after_property_constrains(entry, entry_constrains, env)
+        if new_entry is not None:
+            return_entries.append(new_entry)
+    return return_entries
+
+
+def modify_entry(entry, modify_item):
+    """
+    Apply the properties in modify_item to the entry.
+    """
+
+    entries = [entry]
+    for prop, values in modify_item.items():
+        entries = [dict_with_defaults({prop: value}, entry)
+                   for value in make_a_list(get_property_value(values)) for entry in entries]
+    return entries
+
+
+def execute_entries(entries, execute_item, env):
+    """
+    Execute some command and return entries from the output.
+    """
+
+    new_entries = []
+    expected_num_fields = len(execute_item['return-properties'])
+    for entry in entries:
         try:
-            cmd = executor['command'].format(**dict_with_defaults(artifact, env))
+            cmd = get_property_value(execute_item['command']).format(
+                **dict_with_defaults(apply_at_defaults_on_entry(entry), env))
         except KeyError:
             continue
         if LOG_LEVEL > 0:
@@ -410,14 +580,13 @@ def apply_executor_to_artifacts(artifacts, env, executor):
         r = subprocess.run(cmd, stdout=subprocess.PIPE,
                            universal_newlines=True, shell=True, check=True)
         for line in r.stdout.splitlines():
-            line_elems = line.split(sep=executor.get('split', None))
+            line_elems = line.split(sep=execute_item.get('split', None))
             if len(line_elems) != expected_num_fields:
                 raise Exception(
                     f'Expected an output with {expected_num_fields} field(s) from output `{line}`')
-            new_artifact = dict(**artifact)
-            new_artifact.update(zip(executor['return-attributes'], line_elems))
-            new_artifacts.append(new_artifact)
-    return new_artifacts
+            new_entries.append(dict_with_defaults(entry, dict(zip(execute_item['return-properties'],
+                                                                  line_elems))))
+    return new_entries
 
 #
 # Read/write schemas, constrains, and artifacts
@@ -575,14 +744,12 @@ def get_options_from_schema(schema):
 
     r = {}
     for action in schema:
-        for entry in action.get('values', []):
-            extended_entry = dict(**entry)
-            apply_defaults(extended_entry, action.get('defaults', {}))
-            extended_entry.update(action.get('update', {}))
-            if "option-name" in extended_entry and "option-doc" in extended_entry:
-                r[extended_entry['option-name']] = (extended_entry['option-name'],
-                                                    extended_entry['option-doc'],
-                                                    extended_entry.get('option-group', ''))
+        if 'select' in action or 'execute' in action:
+            continue
+        for entry in execute_schema([action], [{}], {}):
+            if "option-name" in entry and "option-doc" in entry:
+                r[entry['option-name']] = (entry['option-name'], entry['option-doc'],
+                                           entry.get('option-group', ''))
     return r.values()
 
 
@@ -593,14 +760,13 @@ def get_variables_from_schema(schema):
 
     r = {}
     for action in schema:
-        for entry in action.get('values', []):
-            extended_entry = dict(**entry)
-            apply_defaults(extended_entry, action.get('defaults', {}))
-            extended_entry.update(action.get('update', {}))
-            if "variable-name" in extended_entry and "variable-doc" in extended_entry:
-                r[extended_entry['variable-name']] = (extended_entry['variable-name'],
-                                                      extended_entry.get('variable-default', None),
-                                                      extended_entry['variable-doc'])
+        if 'select' in action or 'execute' in action:
+            continue
+        for entry in execute_schema([action], [{}], {}):
+            if "variable-name" in entry and "variable-doc" in entry:
+                r[entry['variable-name']] = (entry['variable-name'],
+                                             entry.get('variable-default', None),
+                                             entry['variable-doc'])
     return r.values()
 
 
@@ -665,6 +831,7 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
                         default=False, required=False)
     parser.add_argument('--constrains', help='JSON file with a list of constrains', nargs='+',
                         required=False, default=[])
+    parser.add_argument('--log', action='store_true', default=False, required=False)
     try:
         args = parser.parse_known_args()
     except Exception as e:
@@ -738,6 +905,9 @@ $ kaon.py --kind configuration eigenvector --cfg_dir cl21_48_96_b6p3_m0p2416_m0p
     for k, _, _ in attribute_variables:
         env[k] = vars_args[k][0]
 
+    # Set log level
+    LOG_LEVEL = 1 if args.log else 0
+
     # Execute the scheme
     artifacts = execute_schema(schema, constrained_view, env)
 
@@ -761,14 +931,14 @@ def do_test():
 
     # Check simple schema with values
     schema = [{
-        "values": [
-            {"name": "ensemble1"},
-            {"name": "ensemble2", "kind": "file"}
+        "modify": [
+            {"name": ["broken-line", "ensemble1"]},
+            {"name": "ensemble2", "kind": ["multiple-lines", "file"]}
         ],
-        "update": {"kind": "ensemble"},
+        "finalize": {"kind": "ensemble"},
         "id": "ensemble-{name}"
     }, {
-        "depends": {"name": {"matching-re": r"ensemble(?P<num>\d+)", "copy-as": "alias"}},
+        "select": {"name": {"matching-re": r"ensemble(?P<num>\d+)", "copy-to": "alias"}},
         "id": "ensemble-{name}"
     }]
     check_schema(schema)
@@ -778,21 +948,20 @@ def do_test():
     assert execute_schema(schema, [{'name': ['ensemble2']}], {}) == true_artifacts[1:]
 
     schema = [{
-        "values": [{"option-name": "prefix", "option-doc": "prefix doc"}],
+        "modify": [{"option-name": "prefix", "option-doc": "prefix doc"}],
         "id": "option-{option-name}"
     }, {
-        "defaults": {"prefix": "pre0"},
-        "values": [
-            {},
+        "modify": [
+            {"prefix@default": "pre0"},
             {"prefix": "pre1"}
         ],
         "id": "{prefix}"
     }, {
-        "depends": {},
-        "defaults": {"o2": "v2"},
-        "executor": {
+        "select": {},
+        "modify": {"o2@default": "v2"},
+        "execute": {
             "command": "for i in `seq 2` ; do echo {prefix} $i; done",
-            "return-attributes": ["o0", "o1"]
+            "return-properties": ["o0", "o1"]
         },
         "id": "ex-{o0}-{o1}"
     }]

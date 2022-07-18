@@ -1,6 +1,6 @@
 [
     {
-        "values": [
+        "modify": [
             {
                 "option-name": "facility",
                 "option-doc": "facility id"
@@ -54,13 +54,13 @@
                 "option-doc": "sbatch extra command line arguments, eg the allocation, the queue..."
             }
         ],
-        "update": {
+        "finalize": {
             "option-group": "facilities"
         },
         "id": "option-{option-name}"
     },
     {
-        "values": [
+        "modify": [
             {
                 "facility": "jz-gpu",
                 "node_type": "4V100",
@@ -97,7 +97,7 @@
         "id": "facility-{facility}"
     },
     {
-        "values": [
+        "modify": [
             {
                 "facility": "jz-gpu",
                 "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
