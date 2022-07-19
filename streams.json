@@ -1,34 +1,94 @@
 [
     {
-        "values": [
+        "description": [
+            "Schema to describe the ensembles, streams, and expected t_sources and phases",
+            "NOTE: depends on ensembles.json."
+        ]
+    },
+    {
+        "name": "describe options",
+        "modify": [
+            {
+                "option-name": "kind",
+                "option-doc": "one of ensemble, stream, configuration, eigenvector, propagator, genprop..."
+            },
             {
                 "option-name": "cfg_dir",
-                "option-doc": "configuration root directory relative to the cache"
+                "option-doc": "configurations root directory relative to the cache"
+            },
+            {
+                "option-name": "art_dir",
+                "option-doc": "propagators, genprops... root directory relative to the cache"
+            },
+            {
+                "option-name": "phase",
+                "option-doc": "eigenvector phasing in the z-direction"
+            },
+            {
+                "option-name": "t_source",
+                "option-doc": "propagator and genprop first time-slice"
             }
         ],
+        "finalize": {
+            "option-group": "ensembles"
+        },
         "id": "option-{option-name}"
     },
     {
-        "values": [
+        "name": "streams for ensemble cl21_48_96_b6p3_m0p2416_m0p2050",
+        "select": {
+            "kind": [
+                "ensemble"
+            ],
+            "ens_name": [
+                "cl21_48_96_b6p3_m0p2416_m0p2050"
+            ]
+        },
+        "modify": [
             {
-                "kind": "stream",
                 "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050/cfgs",
-                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs",
-                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-rightColorvecs"
             },
             {
-                "kind": "stream",
                 "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000/cfgs",
-                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000-rightColorvecs",
-                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-1000-rightColorvecs"
             },
             {
-                "kind": "stream",
                 "cfg_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams/cl21_48_96_b6p3_m0p2416_m0p2050/cfgs",
-                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams-rightColorvecs/cl21_48_96_b6p3_m0p2416_m0p2050",
-                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
+                "art_dir": "cl21_48_96_b6p3_m0p2416_m0p2050-djm-streams-rightColorvecs/cl21_48_96_b6p3_m0p2416_m0p2050"
             }
         ],
-        "id": "stream-{cfg_dir}"
+        "finalize": {
+            "kind": "stream"
+        },
+        "id": "stream-{art_dir}"
+    },
+    {
+        "name": "t_source and phases for ensemble cl21_48_96_b6p3_m0p2416_m0p2050",
+        "select": {
+            "kind": [
+                "stream"
+            ],
+            "ens_name": [
+                "cl21_48_96_b6p3_m0p2416_m0p2050"
+            ]
+        },
+        "modify": {
+            "phase": [
+                "0.00",
+                "-3.00",
+                "0.00"
+            ],
+            "t_source": [
+                "0",
+                "24",
+                "48",
+                "72"
+            ]
+        },
+        "finalize": {
+            "kind": "stream-phased-t_source"
+        },
+        "id": "stream-phased-t_source{art_dir}-{phase}-{t_source}"
     }
 ]

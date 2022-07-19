@@ -1,6 +1,13 @@
 [
     {
-        "values": [
+        "description": [
+            "Schema to describe the ensembles, streams, and expected t_sources and phases",
+            "NOTE: depends on streams.json and facilities.json."
+        ]
+    },
+    {
+        "name": "describe options",
+        "modify": [
             {
                 "option-name": "file",
                 "option-doc": "file path relative to the cache"
@@ -50,13 +57,14 @@
                 "option-doc": "job auxiliary path relative to the local run directory for generating the eigenvectors"
             }
         ],
-        "update": {
+        "finalize": {
             "option-group": "artifacts"
         },
         "id": "option-{option-name}"
     },
     {
-        "values": [
+        "name": "describe variables",
+        "modify": [
             {
                 "variable-name": "JLAB_REMOTE",
                 "variable-doc": "prefix commandline to access JLab's /mss, /cache, and tape utilities; eg. ssh -J login.jlab.org qcdi1401",
@@ -77,18 +85,20 @@
     },
     {
         "name": "List files in tape",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "executor": {
-            "command": "( {JLAB_REMOTE} find /mss/lattice/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /mss/lattice/isoClover/{art_dir} ) | while read file ; do echo ${{file#/mss/lattice/isoClover/}}; done; ",
-            "return-attributes": [
+        "execute": {
+            "command": [
+                "broken-line",
+                "( {JLAB_REMOTE} find /mss/lattice/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /mss/lattice/isoClover/{art_dir} ) |",
+                "while read file ; do echo ${{file#/mss/lattice/isoClover/}}; done"
+            ],
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "remote_status": "tape",
             "status": "none"
@@ -97,18 +107,20 @@
     },
     {
         "name": "List files in /cache",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "executor": {
-            "command": "( {JLAB_REMOTE} find /cache/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /cache/isoClover/{art_dir} ) | while read file ; do echo ${{file#/cache/isoClover/}}; done",
-            "return-attributes": [
+        "execute": {
+            "command": [
+                "broken-line",
+                "( {JLAB_REMOTE} find /cache/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /cache/isoClover/{art_dir} ) |",
+                "while read file ; do echo ${{file#/cache/isoClover/}}; done"
+            ],
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "remote_status": "cached"
         },
@@ -117,13 +129,13 @@
     {
         "name": "Fix status for files being brought from tape",
         "description": "avoid operating with files not fully copied from tape",
-        "executor": {
+        "execute": {
             "command": "./kaon-get-files-transitioning-to-cache.sh",
-            "return-attributes": [
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "remote_status": "none"
         },
@@ -131,19 +143,17 @@
     },
     {
         "name": "Get remote promises",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "executor": {
+        "execute": {
             "command": "./kaon-get-promises.sh {cfg_dir} {art_dir}",
-            "return-attributes": [
+            "return-properties": [
                 "file",
                 "promiser"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "remote_status": "promised"
         },
@@ -151,40 +161,48 @@
     },
     {
         "name": "List files in the local cache",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "defaults": {
-            "remote_status": "none"
-        },
-        "executor": {
-            "command": "if [ -d {LOCAL_CACHE} ] ; then find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} ! -name '*.globus-to-*' | while read file ; do echo ${{file#{LOCAL_CACHE}/}}; done; fi",
-            "return-attributes": [
+        "execute": {
+            "command": [
+                "multiple-lines",
+                "if [ -d {LOCAL_CACHE} ] ; then",
+                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} ! -name '*.globus-to-*' | while read file ; do",
+                "    echo ${{file#{LOCAL_CACHE}/}}",
+                "  done",
+                "fi"
+            ],
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
-            "status": "local"
+            "status": "local",
+            "remote_status@default": "none"
         },
         "id": "file-{file}"
     },
     {
         "name": "Track files being copied from other facilities to this one",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "executor": {
-            "command": "if [ -d {LOCAL_CACHE} ] ; then find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-here' | while read file ; do a=\"${{file#{LOCAL_CACHE}/}}\"; echo {{a%.globus-to-here}}; done; fi",
-            "return-attributes": [
+        "execute": {
+            "command": [
+                "multiple-lines",
+                "if [ -d {LOCAL_CACHE} ] ; then",
+                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-here' | while read file ; do",
+                "    a=\"${{file#{LOCAL_CACHE}/}}\"; echo {{a%.globus-to-here}}",
+                "  done",
+                "fi"
+            ],
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "status": "promised"
         },
@@ -192,18 +210,23 @@
     },
     {
         "name": "Track files being copied to other facilities from this one",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "executor": {
-            "command": "if [ -d {LOCAL_CACHE} ] ; then find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-jlab' | while read file ; do a=\"${{file#{LOCAL_CACHE}/}}\"; echo ${{a%.globus-to-jlab}}; done; fi",
-            "return-attributes": [
+        "execute": {
+            "command": [
+                "multiple-lines",
+                "if [ -d {LOCAL_CACHE} ] ; then",
+                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-jlab' | while read file ; do",
+                "    a=\"${{file#{LOCAL_CACHE}/}}\"; echo ${{a%.globus-to-jlab}}",
+                "  done",
+                "fi"
+            ],
+            "return-properties": [
                 "file"
             ]
         },
-        "update": {
+        "finalize": {
             "kind": "file",
             "remote_status": "promised"
         },
@@ -211,90 +234,75 @@
     },
     {
         "name": "List files generated by local jobs",
-        "depends": {
-            "kind": [
-                "stream"
-            ]
+        "select": {
+            "kind": "stream"
         },
-        "defaults": {
-            "remote_status": "none"
-        },
-        "executor": {
+        "execute": {
             "command": "./kaon-get-slurm-status.sh {LOCAL_RUN}/{art_dir}",
-            "return-attributes": [
+            "return-properties": [
                 "file",
                 "status"
             ]
         },
-        "update": {
-            "kind": "file"
+        "finalize": {
+            "kind": "file",
+            "remote_status@default": "none"
         },
         "id": "file-{file}"
     },
     {
         "name": "Classify files as configurations",
-        "depends": {
+        "select": {
             "file": {
-                "copy-as": "cfg_file",
-                "matching-re": "{cfg_dir}/{ens_name}_cfg_(?P<cfg_num>\\d+).lime$"
+                "move-to": "cfg_file",
+                "matching-re": "{cfg_dir}/{ens_name}_cfg_(?P<cfg_num>\\d+).lime"
             },
-            "kind": [
-                "file"
-            ],
+            "kind": "file",
             "remote_status": {
-                "copy-as": "cfg_file_remote_status"
+                "move-to": "cfg_file_remote_status"
             },
             "status": {
-                "copy-as": "cfg_file_status"
+                "move-to": "cfg_file_status"
             }
         },
-        "update": {
+        "finalize": {
             "kind": "configuration"
         },
         "id": "cfg-{cfg_dir}-{cfg_num}"
     },
     {
         "name": "Classify files as eigenvectors",
-        "depends": {
+        "select": {
             "file": {
-                "copy-as": "eig_file",
+                "move-to": "eig_file",
                 "matching-re": "{art_dir}/eigs_mod/{ens_name}\\.3d\\.eigs\\.n(?P<eig_num_vecs>\\d+).mod(?P<cfg_num>\\d+)$"
             },
-            "kind": [
-                "file"
-            ],
+            "kind": "file",
             "remote_status": {
-                "copy-as": "eig_file_remote_status"
+                "move-to": "eig_file_remote_status"
             },
             "status": {
-                "copy-as": "eig_file_status"
+                "move-to": "eig_file_status"
             }
         },
-        "update": {
+        "finalize": {
             "kind": "eigenvector"
         },
         "id": "eig-{art_dir}-{cfg_num}"
     },
     {
         "name": "Associate a configuration to a generated eigenvector",
-        "depends": {
-            "kind": [
-                "configuration"
-            ]
+        "select": {
+            "kind": "configuration"
         },
-        "update": {
+        "finalize": {
             "kind": "eigenvector"
         },
         "id": "eig-{art_dir}-{cfg_num}"
     },
     {
         "name": "Generate entries for missing eigenvectors",
-        "defaults": {
-            "eig_file": "none",
-            "eig_file_remote_status": "none",
-            "eig_file_status": "none"
-        },
-        "depends": {
+        "select": {
             "eig_default_file": {
                 "interpolate": "{art_dir}/eigs_mod/{ens_name}.3d.eigs.n{default_num_vecs}.mod{cfg_num}"
             },
@@ -305,65 +313,90 @@
                 "configuration"
             ]
         },
-        "update": {
-            "kind": "eigenvector"
+        "finalize": {
+            "kind": "eigenvector",
+            "eig_file@default": "none",
+            "eig_file_remote_status@default": "none",
+            "eig_file_status@default": "none"
         },
         "id": "eig-{art_dir}-{cfg_num}"
     },
     {
-        "depends": {
+        "name": "Classify files as propagators (unphased)",
+        "select": {
             "file": {
-                "copy-as": "prop_file",
+                "move-to": "prop_file",
                 "matching-re": "{art_dir}/prop_db/{ens_name}.prop.n(?P<prop_num_vecs>\\d+).light.t0_(?P<prop_t_source>\\d+).sdb(?P<fg_num>\\d)"
             },
-            "kind": [
-                "file"
-            ],
+            "kind": "file",
             "remote_status": {
-                "copy-as": "prop_file_remote_status"
+                "move-to": "prop_file_remote_status"
             },
             "status": {
-                "copy-as": "prop_file_status"
+                "move-to": "prop_file_status"
             }
         },
-        "update": {
+        "finalize": {
             "kind": "propagator",
             "prop_phase": "0.00"
         },
         "id": "prop-{art_dir}-{cfg_num}-{prop_phase}-{prop_t_source}"
     },
     {
-        "depends": {
+        "name": "Classify files as propagators (phased)",
+        "select": {
             "file": {
-                "copy-as": "prop_file",
+                "move-to": "prop_file",
                 "matching-re": "{art_dir}/phased/prop_db.*/{ens_name}.phased_0_0_(?P<prop_phase>.+).prop.n(?P<prop_num_vecs>\\d+).light.t0_(?P<prop_t_source>\\d+).sdb(?P<cfg_num>\\d+)"
             },
-            "kind": [
-                "file"
-            ],
+            "kind": "file",
             "remote_status": {
-                "copy-as": "prop_file_remote_status"
+                "move-to": "prop_file_remote_status"
             },
             "status": {
-                "copy-as": "prop_file_status"
+                "move-to": "prop_file_status"
             }
         },
-        "update": {
+        "finalize": {
             "kind": "propagator"
         },
         "id": "prop-{art_dir}-{cfg_num}-{prop_phase}-{prop_t_source}"
     },
     {
-        "depends": {
+        "name": "Associate an eigenvector to a generated propagator",
+        "select": [
+            "joint",
+            {
+                "kind": {
+                    "in": [
+                        "eigenvector"
+                    ],
+                    "move-to": null
+                }
+            },
+            {
+                "kind": {
+                    "in": [
+                        "propagator"
+                    ],
+                    "move-to": null
+                }
+            }
+        ],
+        "finalize": {
+            "kind": "propagator"
+        },
+        "id": "prop-{art_dir}-{cfg_num}-{prop_phase}-{prop_t_source}"
+    },
+    {
+        "select": {
             "file": {
-                "copy-as": "file_gprop",
+                "move-to": "file_gprop",
                 "matching-re": "{art_dir}/unsmeared_meson_dbs.*/unsmeared_meson\\.phased_d001_(?P<gprop_phase>\\d+)\\.n(?P<gprop_num_vecs>\\d+)\\.(?P<gprop_t_source>\\d+)\\.tsnk_(?P<gprop_t_seps>\\w+)\\.Gamma_.*\\.sdb(?P<cfg_num>\\d+)(>P<gprop_suffix>.*)$"
             },
-            "kind": [
-                "file"
-            ]
+            "kind": "file"
         },
-        "update": {
+        "finalize": {
             "kind": "genprop"
         },
         "id": "genprop-{art_dir}-{cfg_num}-{gprop_phase}-{gprop_t_source}-{gprop_t_seps}"
