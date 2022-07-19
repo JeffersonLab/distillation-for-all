@@ -127,7 +127,8 @@ def check_property_constrain_in(value, path):
     Check [ _property_value_ ] or null
     """
 
-    check_error(isinstance(value, (None, list)), "expected `null` or a list of strings", path)
+    show_error(value is None or isinstance(value, list),
+               "expected `null` or a list of strings", path)
     if isinstance(value, list):
         for i, v in enumerate(value):
             check_property_value(v, f"{path}/[i]")
@@ -138,7 +139,7 @@ def check_string_or_null(value, path):
     Check that the input is either a string or null
     """
 
-    check_error(isinstance(value, (str, None)), "expected either a string or `null`", path)
+    show_error(value is None or isinstance(value, str), "expected either a string or `null`", path)
 
 
 def check_property_constrains(value, path):
@@ -179,7 +180,7 @@ def check_select(value, path):
                    "expected either a dictionary or a list with at least two elements", path)
         show_error(value[0] in ("and", "joint"), 'expected either "and" or "joint"', f"{path}/[0]")
         for i, entry_constrains in enumerate(value[1:]):
-            check_property_constrains(value, f"{path}/[{i+1}]")
+            check_property_constrains(entry_constrains, f"{path}/[{i+1}]")
 
 
 def check_modify(value, path):
@@ -541,7 +542,7 @@ def joint_entries_list(entries_list):
     # Return the Cartesian product of all entries with the same shared properties
     return_entries = []
     for joint_value in joint.values():
-        for t in itertools.product(*joint_values):
+        for t in itertools.product(*joint_value):
             new_entry = {}
             for entry in t:
                 new_entry.update(entry)
