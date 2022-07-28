@@ -1,10 +1,9 @@
 # KaoN Schema
 
 KaoN is a simple data manipulation language. The internal structure is a collection of key-value
-dictionaries, referred as `entries`. The keys and values of an entry referred as attributes and
-values are also strings. The language allows to query, manipulate, and insert new entries. Also, it
-allows to execute shell commands based on entries and retrieve the output and incorporate it as
-entries.
+dictionaries, referred as `entries`. The keys of an entry, referred as properties, have a string
+value associated. The language allows to insert new entries, query, and manipulate them. Also, it
+allows to execute shell commands based on entries and process the output to generate new entries.
 
 The KaoN language is currently defined only on JSON.
 The KaoN interpreter expects a list of objects where each object describes an `action` on the database
@@ -15,19 +14,6 @@ dictionary of _properties_, string key-value pairs. The process of an action res
 entries that will be added to the database. The action has a formula for computing the id
 associated to each entry, specified in the key `"id"`. If there's an entry in the database already
 with the same `id`, the properties of the database entry are updated with the new entry properties.
-
-Each action is broken into the following steps:
-
-* `select`: select entries in the database that matches the constrains under the action key 
-  `depends`. If not given, it returns an entry without properties.
-
-* `defaults`: set attributes with the given values if the entries doesn't have them.
-
-* `values`: spawn new entries setting different properties.
-
-* `exector`: execute a shell command for each entry returned after `values`.
-
-* `update`: 
 
 ## General specification
 
@@ -124,167 +110,523 @@ Associate a name and a description to an action. Some error messages and debuggi
 refer to action's name. They don't have any effect on the result.
 
 Example: 
-```json
-[{
-    "name": "add ensembles",
-    "description": "add a couple of ensembles for testing",
-    "modify": [
-        {"ens-name": "ensemble1" },
-        {"ens-name": "ensemble2" }
-    ],
-    "id": "ensemble-{ens-name}"
-}]
-```
+* Content of `kaon.json`:
+  ```json
+  [{
+      "name": "add ensembles",
+      "description": "add a couple of ensembles for testing",
+      "modify": [
+          {"ens-name": "ensemble1" },
+          {"ens-name": "ensemble2" }
+      ],
+      "id": "ensemble-{ens-name}"
+  }]
+  ```
+
+* Output of `./kaon.py kaon.json --output-format json`:
+  ```json
+  [
+      {"ens-name": "ensemble1" },
+      {"ens-name": "ensemble2" }
+  ]
+  ```
+
 ## `"select"`
 
 If the key `"select"` is present, the action will take as input all database entries that match
 the constrains. Otherwise, the action's input will be an empty entry. The possible constrains are:
 
-- a list indicates the values that the entries should have on that property. An empty list
-  indicates to filter out entries with some value on that property. Example:
+* an object with property constrains (`_entry_constrains_`).
 
-```bash
-cat << EOF > schema.json
-[{
-    "values": [
-        {"kind": "ensemble", "name": "ensemble1" },
-        {"kind": "ensemble", "name": "ensemble2" }
-    ],
-    "id": "ensemble-{name}"
-},{
-    "depends": {
-        "name": [ "ensemble1" ]
-    },
-    "executor": { "command": "echo Hi {name}!" }
-}]
-EOF
-kaon.py schema.json
-Hi ensemble1!
-```
+  The possible constrains are:
 
-- a dictionary with a key `copy-as` and a string value indicates that the entries should have some value
-  on that property, and copy the value into a new property with the `copy-as` string value associated.
-  Example:
+  * "interpolate": sets a new property on entries that have all the requested properties, indicated
+    between curly brakets, `{property}`.
 
-```bash
-[{
-    "values": [
-        {"kind": "ensemble", "name": "ensemble1" },
-        {"kind": "ensemble", "name": "ensemble2" }
-    ],
-    "id": "ensemble-{name}"
-}, {
-    "depends": {
-        "name": {"copy-as": "alias"}
-    },
-    "id": "ensemble-{name}"
-}]
-EOF
-kaon.py schema.json --show kind name alias
-ensemble ensemble1 ensemble1
-ensemble ensemble2 ensemble2
-```
+    Example: 
+    * Content of `kaon.json`:
+      ```json
+      [{
+          "name": "add ensembles",
+          "modify": [
+              {"ens-name": "ensemble1" },
+              {"ens-name": "ensemble2" }
+          ],
+          "id": "ensemble-{ens-name}"
+      },{
+          "name": "add streams",
+          "modify": [
+              {"ens-name": "ensemble1", "stream": "stream1" },
+              {"ens-name": "ensemble1", "stream": "stream2" },
+              {"ens-name": "ensemble2", "stream": "stream1" },
+              {"ens-name": "ensemble2", "stream": "stream2" }
+          ],
+          "id": "stream-{ens-name}-{stream}"
+      },{
+          "name": "add description",
+          "select": { "descrip": { "interpolate": "This is the stream {stream} in ensemble {ens-name}"} },
+          "id": "stream-{ens-name}-{stream}"
+      }]
+      ```
+    
+    * Output of `./kaon.py kaon.json --output-format json`:
+      ```json
+      [
+          {
+              "ens-name": "ensemble1"
+          },
+          {
+              "ens-name": "ensemble2"
+          },
+          {
+              "descrip": "This is the stream stream1 in ensemble ensemble1",
+              "ens-name": "ensemble1",
+              "stream": "stream1"
+          },
+          {
+              "descrip": "This is the stream stream2 in ensemble ensemble1",
+              "ens-name": "ensemble1",
+              "stream": "stream2"
+          },
+          {
+              "descrip": "This is the stream stream1 in ensemble ensemble2",
+              "ens-name": "ensemble2",
+              "stream": "stream1"
+          },
+          {
+              "descrip": "This is the stream stream2 in ensemble ensemble2",
+              "ens-name": "ensemble2",
+              "stream": "stream2"
+          }
+      ]
+      ```
+    Notice that only the entries with properties `ens-name` and `stream` are modified.
 
-- a dictionary with a key `interpolate` and a string value indicates that the entries
-  being referred in the string value (property names enclosed in curly brackets, eg. `{name}`) should have some value, and a new property
-  is created with the name indicated in the parent key and the value the result of the string
-  interpolation.  Example:
+  * "in": select entries for which the property has been set and the value is in the list is given.
 
-```bash
-[{
-    "values": [
-        {"kind": "ensemble", "name": "ensemble1" },
-        {"kind": "ensemble", "name": "ensemble2" }
-    ],
-    "id": "ensemble-{name}"
-}, {
-    "depends": {
-        "alias": {"interpolate": "the-{name}"}
-    },
-    "id": "ensemble-{name}"
-}]
-EOF
-kaon.py schema.json --show kind name alias
-ensemble ensemble1 the-ensemble1
-ensemble ensemble2 the-ensemble2
-```
+    Example: 
+    * Content of `kaon.json`:
+      ```json
+      [{
+          "name": "add streams",
+          "modify": [
+              {"ens-name": "ensemble1", "stream": "stream1" },
+              {"ens-name": "ensemble1", "stream": "stream2" },
+              {"ens-name": "ensemble2", "stream": "stream1" },
+              {"ens-name": "ensemble2", "stream": "stream2" }
+          ],
+          "id": "stream-{ens-name}-{stream}"
+      },{
+          "name": "add description to ensemble1's streams",
+          "select": {
+              "descrip": { "interpolate": "This is a ensemble1 stream" },
+              "ens-name": { "in": ["ensemble1"] }
+          },
+          "id": "stream-{ens-name}-{stream}"
+      }]
+      ```
+    
+    * Output of `./kaon.py kaon.json --output-format json`:
+      ```json
+      [
+          {
+              "descrip": "This is a ensemble1 stream",
+              "ens-name": "ensemble1",
+              "stream": "stream1"
+          },
+          {
+              "descrip": "This is a ensemble1 stream",
+              "ens-name": "ensemble1",
+              "stream": "stream2"
+          },
+          {
+              "ens-name": "ensemble2",
+              "stream": "stream1"
+          },
+          {
+              "ens-name": "ensemble2",
+              "stream": "stream2"
+          }
+      ]
+      ```
+    Notice that only the entries with `ens-name` property being `ensemble1` are modified.
 
-- a dictionary with a key `matching-re` and a string value indicates that the entries
-  being referred in the string value (property names enclosed in curly brackets, eg. `{name}`) together
-  with parent key should have some value; besides, the parent key should match the regular expression
-  define in the string value. The regular expression follows the
-  [python `re` module specification](https://docs.python.org/3/library/re.html?highlight=re#regular-expression-syntax);
-  also, new properties are inserted with the capture values. Example:
+    The `"in"` key has a shortcut. The following exemple is equivalent to the above:
+    ```json
+    [{
+        "name": "add streams",
+        "modify": [
+            {"ens-name": "ensemble1", "stream": "stream1" },
+            {"ens-name": "ensemble1", "stream": "stream2" },
+            {"ens-name": "ensemble2", "stream": "stream1" },
+            {"ens-name": "ensemble2", "stream": "stream2" }
+        ],
+        "id": "stream-{ens-name}-{stream}"
+    },{
+        "name": "add description to ensemble1's streams",
+        "select": {
+            "descrip": { "interpolate": "This is a ensemble1 stream" },
+            "ens-name": ["ensemble1"]
+        },
+        "id": "stream-{ens-name}-{stream}"
+    }]
+    ```
+ 
+  * "copy-to": select entries for which the property has been set and it copies the value into another property.
 
-```bash
-[{
-    "values": [
-        {"kind": "ensemble", "name": "ensemble1" },
-        {"kind": "ensemble", "name": "ensemble2" }
-    ],
-    "id": "ensemble-{name}"
-}, {
-    "depends": {
-        "name": {"matching-re": "{kind}(?P<num>\d+)"}
-    },
-    "id": "{kind}-{name}"
-}]
-EOF
-kaon.py schema.json --show kind name num
-ensemble ensemble1 1
-ensemble ensemble2 2
-```
+    Example: 
 
+    * Content of `kaon.json`:
+      ```json
+      [{
+          "name": "add streams",
+          "modify": [
+              {"ens-name": "ensemble1", "stream": "stream1" },
+              {"ens-name": "ensemble1", "stream": "stream2" },
+              {"ens-name": "ensemble2", "stream": "stream1" },
+              {"ens-name": "ensemble2", "stream": "stream2" }
+          ],
+          "id": "stream-{ens-name}-{stream}"
+      },{
+          "name": "add alias to the ensemble name",
+          "select": {
+              "ens-name": { "copy-to": "alias" }
+          },
+          "id": "stream-{ens-name}-{stream}"
+      }]
+      ```
+    
+    * Output of `./kaon.py kaon.json --output-format json`:
+      ```json
+      [
+          {
+              "alias": "ensemble1",
+              "ens-name": "ensemble1",
+              "stream": "stream1"
+          },
+          {
+              "alias": "ensemble1",
+              "ens-name": "ensemble1",
+              "stream": "stream2"
+          },
+          {
+              "alias": "ensemble2",
+              "ens-name": "ensemble2",
+              "stream": "stream1"
+          },
+          {
+              "alias": "ensemble2",
+              "ens-name": "ensemble2",
+              "stream": "stream2"
+          }
+      ]
+      ```
+    Notice that entries with `ens-name` have a new property `alias`.
 
-## `"values"`
+  * "move-to": select entries for which the property has been set and it renames the property, or
+    deletes it when `null` is given.
 
-List of `entries` to introduce in the database. It cannot be used together with `"executor"`.
-
-Examples:
-- Introduce two entries in the database
-
-```bash
-cat << EOF > schema.json
-[{
-    "values": [
-        {"kind": "ensemble", "name": "ensemble1" },
-        {"kind": "ensemble", "name": "ensemble2" }
-    ],
-    "id": "ensemble-{name}"
-}]
-EOF
-kaon.py schema.json --show kind name
-ensemble ensemble1
-ensemble ensemble2
-```
-
-Equivalent action: 
+    Example: 
+    * Content of `kaon.json`:
 ```json
 [{
-    "values": [
-        {"name": "ensemble1" },
-        {"name": "ensemble2" }
+    "name": "add streams",
+    "modify": [
+        {"ens-name": "ensemble1", "stream": "stream1" },
+        {"ens-name": "ensemble1", "stream": "stream2" },
+        {"ens-name": "ensemble2", "stream": "stream1" },
+        {"ens-name": "ensemble2", "stream": "stream2" }
     ],
-    "update": {"kind": "ensemble"},
-    "id": "ensemble-{name}"
+    "id": "stream-{ens-name}-{stream}"
+},{
+    "name": "rename ens-name to name",
+    "select": {
+        "ens-name": { "move-to": "name" }
+    },
+    "id": "stream-{name}-{stream}"
 }]
 ```
-## `"defaults"`
+    
+    * Output of `./kaon.py kaon.json --output-format json`:
+      ```json
+      [
+          {
+              "name": "ensemble1",
+              "stream": "stream1"
+          },
+          {
+              "name": "ensemble1",
+              "stream": "stream2"
+          },
+          {
+              "name": "ensemble2",
+              "stream": "stream1"
+          },
+          {
+              "name": "ensemble2",
+              "stream": "stream2"
+          }
+      ]
+      ```
+    Notice that entries with `ens-name` have a renamed the property to `name`.
 
-...
+  * "matching-re": select entries for which the property has been set and all the properties
+    enclosed in curly brackets exits and the value matches the regular expression.
+    The regular expression follows the [python `re` module specification](https://docs.python.org/3/library/re.html?highlight=re#regular-expression-syntax).
+    Also, new properties are inserted with the captured values.
 
-## `"update"`
+    Example: 
+    * Content of `kaon.json`:
+    ```json
+[{
+    "name": "add streams",
+    "modify": [
+        {"ens-name": "ensemble1" },
+        {"ens-name": "ensemble2" }
+    ],
+    "id": "ensemble-{ens-name}"
+},{
+    "name": "extract number from ensemble name",
+    "select": {
+        "ens-name": { "matching-re": "ensemble(?P<num>\\d+)" }
+    },
+    "id": "ensemble-{ens-name}"
+}]
+    ```
+    
+    * Output of `./kaon.py kaon.json --output-format json`:
+    ```json
+[
+    {
+        "ens-name": "ensemble1",
+        "num": "1"
+    },
+    {
+        "ens-name": "ensemble2",
+        "num": "2"
+    }
+]
+    ```
+    Notice that entries with `ens-name` have a new property `num`.
 
-...
+* a list of property constrains headed by `"and"`.
 
-## `"executor"`
+  Select entries that satisfy *any* of the constrains.
 
-...
+  Example: 
+  * Content of `kaon.json`:
+    ```json
+    [{
+        "name": "add ensembles",
+        "modify": [
+            {"ens-name": "ensemble1" },
+            {"ens-name": "ensemble2" },
+            {"ens-name": "ensemble3" },
+            {"ens-name": "ensemble4" }
+        ],
+        "id": "ensemble-{ens-name}"
+    },{
+        "name": "add description to ensemble1 and ensemble2",
+        "select": [
+            "and",
+            { "ens-name": ["ensemble1"] },
+            { "ens-name": ["ensemble2"] }
+        ],
+        "modify": {"MeV": "100"},
+        "id": "ensemble-{ens-name}"
+    }]
+    ```
+    
+  * Output of `./kaon.py kaon.json --output-format json`:
+    ```json
+    [
+        {
+            "MeV": "100",
+            "ens-name": "ensemble1"
+        },
+        {
+            "MeV": "100",
+            "ens-name": "ensemble2"
+        },
+        {
+            "ens-name": "ensemble3"
+        },
+        {
+            "ens-name": "ensemble4"
+        }
+    ]
+    ```
+  Notice that entries with `ens-name` either `ensemble1` or `ensemble2` have a new property `MeV`.
+
+* a list of property constrains headed by `"joint"`.
+
+  Select entries that satisfy *all* of the constrains and return objects combining all posible
+  entries in each constrain:
+
+  Example: 
+  * Content of `kaon.json`:
+    ```json
+    [{
+        "name": "add ensembles",
+        "modify": [
+            {"ens-name": "ensemble1", "MeV": "150" },
+            {"ens-name": "ensemble2", "MeV": "200" }
+        ],
+        "id": "ensemble-{ens-name}"
+    },{
+        "name": "add streams",
+        "modify": [
+            {"ens-name": "ensemble1", "stream": "stream1" },
+            {"ens-name": "ensemble1", "stream": "stream2" },
+            {"ens-name": "ensemble2", "stream": "stream1" }
+        ],
+        "id": "stream-{ens-name}-{stream}"
+    },{
+        "name": "update the streams with the ensemble's MeV",
+        "select": [
+            "joint",
+            { "MeV": {} },
+            { "stream": {} }
+        ],
+        "id": "stream-{ens-name}-{stream}"
+    }]
+    ```
+    
+  * Output of `./kaon.py kaon.json --output-format json`:
+    ```json
+    [
+        {
+            "MeV": "150",
+            "ens-name": "ensemble1"
+        },
+        {
+            "MeV": "200",
+            "ens-name": "ensemble2"
+        },
+        {
+            "MeV": "150",
+            "ens-name": "ensemble1",
+            "stream": "stream1"
+        },
+        {
+            "MeV": "150",
+            "ens-name": "ensemble1",
+            "stream": "stream2"
+        },
+        {
+            "MeV": "200",
+            "ens-name": "ensemble2",
+            "stream": "stream1"
+        }
+    ]
+    ```
+    Notice that entries with property `MeV` are combined with entries with property `stream` such
+    that they have the same value for the common properties, in this case, `ens-name`.
+
+
+## `"modify"` and `"finalize"`
+
+For each active entree, spawn new entries with the given properties. If a property has a list of
+values, it creates one entry for each value. `"modify"` applies to the active entries after `"select"`
+and `"finalize"` applies after `"execute"`.
+
+* Content of `kaon.json`:
+  ```json
+  [{
+      "name": "add ensembles",
+      "modify": [
+          {"ens-name": "ensemble1" },
+          {"ens-name": "ensemble2" }
+      ],
+      "id": "ensemble-{ens-name}"
+  }]
+  ```
+    
+* Output of `./kaon.py kaon.json --output-format json`:
+  ```json
+  [
+      {
+          "ens-name": "ensemble1"
+      },
+      {
+          "ens-name": "ensemble2"
+      }
+  ]
+  ```
+
+The above example is equivalent to:
+
+```json
+[{
+    "name": "add ensembles",
+    "modify": [
+        {"ens-name": ["ensemble1", "ensemble2"]}
+    ],
+    "id": "ensemble-{ens-name}"
+}]
+```
+ 
+## `"execute"`
+
+Execute a commandline for each active entree.
+
+* Content of `kaon.json`:
+  ```json
+  [{
+      "name": "add ensembles",
+      "modify": [
+          {"ens-name": "ensemble1", "dir": "/cache/ensemble1" },
+          {"ens-name": "ensemble2", "dir": "/cache/ensemble2" }
+      ],
+      "id": "ensemble-{ens-name}"
+  },{
+      "name": "find files",
+      "select": {},
+      "execute": {
+          "command": "find {dir}",
+          "return-properties": ["file"]
+      }
+      "id": "file-{ens-name}-{file}"
+  }]
+  ```
+    
+* Possible output of `./kaon.py kaon.json --output-format json`:
+  ```json
+  [
+      {
+          "ens-name": "ensemble1",
+          "dir": "/cache/ensemble1"
+      },
+      {
+          "ens-name": "ensemble2",
+          "dir": "/cache/ensemble2"
+      },
+      {
+          "ens-name": "ensemble1",
+          "dir": "/cache/ensemble1",
+          "file": "/cache/ensemble1/conf-1.sdb"
+      },
+      {
+          "ens-name": "ensemble1",
+          "dir": "/cache/ensemble1",
+          "file": "/cache/ensemble1/conf-2.sdb"
+      },
+      {
+          "ens-name": "ensemble2",
+          "dir": "/cache/ensemble2",
+          "file": "/cache/ensemble2/conf-1.sdb"
+      },
+  ]
+  ```
 
 ## `"id"`
 
 The id of each entry is computed with the interpolated
 expression in `"id"` key. The properties will be updated if an entry with that id exists already.
 Otherwise, a new entry will be added.
+
+...
+
+## `"show-after"` (debugging)
 
 ...
