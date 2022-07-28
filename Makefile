@@ -14,3 +14,6 @@ test: check_python_version
 
 check_python_version:
 	echo $$'import sys\nif sys.version_info[0] < 3: raise Exception("Please use python 3")' | ${PYTHON} 
+
+kaon-schema.html: kaon-schema.md
+	pandoc -s kaon-schema.md -o kaon-schema.html
