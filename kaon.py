@@ -474,9 +474,9 @@ def get_entry_after_property_constrains(entry, entry_constrains, env):
         if 'in' in prop_constrains:
             if prop_constrains['in'] is None and prop not in entry:
                 return None
-            if len(prop_constrains['in']) == 0 and prop in entry:
+            if prop_constrains['in'] is not None and len(prop_constrains['in']) == 0 and prop in entry:
                 return None
-            if (len(prop_constrains['in']) > 0 and
+            if prop_constrains['in'] is not None and (len(prop_constrains['in']) > 0 and
                     (prop not in entry or entry[prop] not in prop_constrains['in'])):
                 return None
         if 'copy-to' in prop_constrains:
