@@ -741,7 +741,7 @@ def print_artifacts_as_schema(artifacts, output_attributes):
 
     artifacts = restrict_output_attributes(
         artifacts, output_attributes, ignore_doc_attributes=False)
-    schema = [{'values': artifacts}]
+    schema = [{'modify': artifacts}]
     json.dump(schema, sys.stdout, indent=4, sort_keys=True)
     sys.stdout.write('\n')
 
