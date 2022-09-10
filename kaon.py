@@ -339,7 +339,7 @@ def execute_schema(schema, constrained_view, env):
         for j, execute_item in enumerate(make_a_list(action.get('execute', []))):
             try:
                 active_entries = execute_entries(active_entries, execute_item, env)
-            except Exeception as e:
+            except Exception as e:
                 raise Exception(f"Error in {action_name}/execute/[j].") from e
         print_entries_for_debugging(active_entries, action, 'execute')
 
@@ -477,7 +477,7 @@ def get_entry_after_property_constrains(entry, entry_constrains, env):
             if prop_constrains['in'] is not None and len(prop_constrains['in']) == 0 and prop in entry:
                 return None
             if prop_constrains['in'] is not None and (len(prop_constrains['in']) > 0 and
-                    (prop not in entry or entry[prop] not in prop_constrains['in'])):
+                                                      (prop not in entry or entry[prop] not in prop_constrains['in'])):
                 return None
         if 'copy-to' in prop_constrains:
             if prop not in entry:
@@ -523,8 +523,11 @@ def joint_entries_list(entries_list):
     """
 
     # Find the common attributes to all entries
-    common_properties = list(set.intersection(
-        *[set(entry.keys()) for entries in entries_list for entry in entries]))
+    if sum([len(entries) for entries in entries_list]) > 0:
+        common_properties = list(set.intersection(
+            *[set(entry.keys()) for entries in entries_list for entry in entries]))
+    else:
+        common_properties = []
 
     # Trivial case: if there's no common property just do the Cartesian product of the lists
     if len(common_properties) == 0:
