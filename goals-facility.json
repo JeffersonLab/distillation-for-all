@@ -1,0 +1,90 @@
+[
+    {
+        "modify": [
+            {
+                "option-doc": "facility id",
+                "option-group": "facilities",
+                "option-name": "facility"
+            },
+            {
+                "option-doc": "one of knl (for KNLs), 32cpu (for similar to 32 core nodes), 4V100 (for 4 V100 on the node) ",
+                "option-group": "facilities",
+                "option-name": "node_type"
+            },
+            {
+                "option-doc": "CPU cores per node; if given OMP_NUM_THREADS and MKL_NUM_THREADS is set up",
+                "option-group": "facilities",
+                "option-name": "num_cores"
+            },
+            {
+                "option-doc": "whether to compute eigenvectors",
+                "option-group": "facilities",
+                "option-name": "do_eigs"
+            },
+            {
+                "option-doc": "whether to compute propagators, genprops, and disconnected diagrams",
+                "option-group": "facilities",
+                "option-name": "do_props"
+            },
+            {
+                "option-doc": "whether to compute correlation functions with redstar",
+                "option-group": "facilities",
+                "option-name": "do_redstar"
+            },
+            {
+                "option-doc": "maximum number of jobs bundled together; it limits the number of open files for prop and genprops",
+                "option-group": "facilities",
+                "option-name": "prop_max_job_bundling"
+            },
+            {
+                "option-doc": "maximum number of nodes bundled in a single job",
+                "option-group": "facilities",
+                "option-name": "max_nodes_per_job"
+            },
+            {
+                "option-doc": "environ script to load before running chroma",
+                "option-group": "facilities",
+                "option-name": "chroma_env"
+            },
+            {
+                "option-doc": "launcher for chroma and launcher arguments",
+                "option-group": "facilities",
+                "option-name": "chroma_srun"
+            },
+            {
+                "option-doc": "full path to chroma binary",
+                "option-group": "facilities",
+                "option-name": "chroma_bin"
+            },
+            {
+                "option-doc": "extra chroma command line arguments",
+                "option-group": "facilities",
+                "option-name": "chroma_extra_args"
+            },
+            {
+                "option-doc": "sbatch extra command line arguments, eg the allocation, the queue...",
+                "option-group": "facilities",
+                "option-name": "sbatch_extra"
+            },
+            {
+                "chroma_bin": "/linkhome/rech/gencpt01/uie52up/jk_work/chromaform/install/chroma-quda-qdp-jit-double-nd4/bin/chroma",
+                "chroma_env": "export GPU_DEVICE_ORDINAL=\"0,1,2,3\"",
+                "chroma_extra_args": "-pool-max-alloc 0 -pool-max-alignment 512",
+                "chroma_srun": "srun",
+                "do_eigs": "yes",
+                "do_props": "yes",
+                "do_redstar": "no",
+                "facility": "jz-gpu",
+                "max_nodes_per_job": "999999",
+                "node_type": "4V100",
+                "num_cores": "32",
+                "prop_max_job_bundling": "1",
+                "sbatch_extra": "--account=qjs@gpu --constraint=v100-16g --ntasks-per-node=4 --cpus-per-task=10 --hint=nomultithread --gres=gpu:4 --exclusive"
+            },
+            {
+                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
+                "facility": "jz-gpu"
+            }
+        ]
+    }
+]

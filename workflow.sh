@@ -3,7 +3,7 @@
 . env.sh
 
 # Constrain the goals for ensembles active in this facility
-./kaon.py facilities.json goals.json --facility $THIS_FACILITY --output-format json > goals-facility.json
+./kaon.py facilities.json --facility $THIS_FACILITY --output-format schema > goals-facility.json
 
 # Check the capabilities of this facility
 do_eigs="`./kaon.py facilities.json --facility $THIS_FACILITY --show do_eigs`"
@@ -16,12 +16,12 @@ max_eig_promises="0"
 #
 
 # Set scope, work with configurations and eigenvector from a stream and a range of trajectories
-scope="facilities.json ensemble.json artifacts.json --constrains goals-facility.json --JLAB_REMOTE ${JLAB_REMOTE} --LOCAL_CACHE ${LOCAL_CACHE} --LOCAL_RUN ${LOCAL_RUN}"
+scope="facilities.json ensembles_32_64.json artifacts.json goals-facility.json"
 
 # Iteratively run the following steps until the number of configuration without an eigenvector is zero
 while true ; do
 	# a) Capture all information about the goals
-	./kaon.py $scope --output-format schema > scope.json
+	./kaon.py $scope --output-format schema --log > scope.json
 	exit 0
 
 	# b) Copy back configurations and eigenvectors that are not at jlab's tape

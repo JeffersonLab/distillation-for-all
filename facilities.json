@@ -70,11 +70,22 @@
                 "do_redstar": "no",
                 "prop_max_job_bundling": "1",
                 "max_nodes_per_job": "999999",
-                "chroma_env": "",
-                "chroma_srun": "",
-                "chroma_bin": "",
-                "chroma_extra_args": "",
-                "sbatch_extra": ""
+                "chroma_env": [
+                    "multiline",
+                    "/linkhome/rech/gencpt01/uie52up/jk_work/chromaform/env.sh",
+                    "export SB_LOG=1",
+                    "export SB_DEBUG=0",
+                    "export SB_ASYNC_ALLTOALL=0",
+                    "export SB_UNPACK_ALT=1",
+                    "export OMP_NUM_THREADS=12",
+                    "export SB_TRACK_MEM=1",
+                    "export CUDA_VISIBLE_DEVICES=\"0,1,2,3\"",
+                    "export GPU_DEVICE_ORDINAL=\"0,1,2,3\""
+                ],
+                "chroma_srun": "srun",
+                "chroma_bin": "/linkhome/rech/gencpt01/uie52up/jk_work/chromaform/install/chroma-quda-qdp-jit-double-nd4/bin/chroma",
+                "chroma_extra_args": "-pool-max-alloc 0 -pool-max-alignment 512",
+                "sbatch_extra": "--account=qjs@gpu --constraint=v100-16g --ntasks-per-node=4 --cpus-per-task=10 --hint=nomultithread --gres=gpu:4 --exclusive"
             },
             {
                 "facility": "cori-knl",
@@ -95,14 +106,5 @@
             }
         ],
         "id": "facility-{facility}"
-    },
-    {
-        "modify": [
-            {
-                "facility": "jz-gpu",
-                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050"
-            }
-        ],
-        "id": "activation-{facility}-{ens_name}"
     }
 ]

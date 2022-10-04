@@ -63,27 +63,6 @@
         "id": "option-{option-name}"
     },
     {
-        "name": "describe variables",
-        "modify": [
-            {
-                "variable-name": "JLAB_REMOTE",
-                "variable-doc": "prefix commandline to access JLab's /mss, /cache, and tape utilities; eg. ssh -J login.jlab.org qcdi1401",
-                "variable-default": ""
-            },
-            {
-                "variable-name": "LOCAL_CACHE",
-                "variable-doc": "full path to the local cache directory",
-                "variable-default": "cache"
-            },
-            {
-                "variable-name": "LOCAL_RUN",
-                "variable-doc": "full path to the local run directory",
-                "variable-default": "run"
-            }
-        ],
-        "id": "variable-{variable-name}"
-    },
-    {
         "name": "List files in tape",
         "select": {
             "kind": "stream"
@@ -91,7 +70,7 @@
         "execute": {
             "command": [
                 "broken-line",
-                "( {JLAB_REMOTE} find /mss/lattice/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /mss/lattice/isoClover/{art_dir} ) |",
+                "( $JLAB_REMOTE find /mss/lattice/isoClover/{cfg_dir} ; $JLAB_REMOTE find /mss/lattice/isoClover/{art_dir} ) |",
                 "while read file ; do echo ${{file#/mss/lattice/isoClover/}}; done"
             ],
             "return-properties": [
@@ -113,7 +92,7 @@
         "execute": {
             "command": [
                 "broken-line",
-                "( {JLAB_REMOTE} find /cache/isoClover/{cfg_dir} ; {JLAB_REMOTE} find /cache/isoClover/{art_dir} ) |",
+                "( $JLAB_REMOTE find /cache/isoClover/{cfg_dir} ; $JLAB_REMOTE find /cache/isoClover/{art_dir} ) |",
                 "while read file ; do echo ${{file#/cache/isoClover/}}; done"
             ],
             "return-properties": [
@@ -167,9 +146,9 @@
         "execute": {
             "command": [
                 "multiple-lines",
-                "if [ -d {LOCAL_CACHE} ] ; then",
-                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} ! -name '*.globus-to-*' | while read file ; do",
-                "    echo ${{file#{LOCAL_CACHE}/}}",
+                "if [ -d $LOCAL_CACHE/ ] ; then",
+                "  find $LOCAL_CACHE/{{{cfg_dir},{art_dir}}} ! -name '*.globus-to-*' | while read file ; do",
+                "    echo ${{file#$LOCAL_CACHE/}}",
                 "  done",
                 "fi"
             ],
@@ -192,9 +171,9 @@
         "execute": {
             "command": [
                 "multiple-lines",
-                "if [ -d {LOCAL_CACHE} ] ; then",
-                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-here' | while read file ; do",
-                "    a=\"${{file#{LOCAL_CACHE}/}}\"; echo {{a%.globus-to-here}}",
+                "if [ -d $LOCAL_CACHE/ ] ; then",
+                "  find $LOCAL_CACHE/{{{cfg_dir},{art_dir}}} -name '*.globus-to-here' | while read file ; do",
+                "    a=\"${{file#$LOCAL_CACHE/}}\"; echo {{a%.globus-to-here}}",
                 "  done",
                 "fi"
             ],
@@ -216,9 +195,9 @@
         "execute": {
             "command": [
                 "multiple-lines",
-                "if [ -d {LOCAL_CACHE} ] ; then",
-                "  find {LOCAL_CACHE}/{{{cfg_dir},{art_dir}}} -name '*.globus-to-jlab' | while read file ; do",
-                "    a=\"${{file#{LOCAL_CACHE}/}}\"; echo ${{a%.globus-to-jlab}}",
+                "if [ -d $LOCAL_CACHE/ ] ; then",
+                "  find $LOCAL_CACHE/{{{cfg_dir},{art_dir}}} -name '*.globus-to-jlab' | while read file ; do",
+                "    a=\"${{file#$LOCAL_CACHE/}}\"; echo ${{a%.globus-to-jlab}}",
                 "  done",
                 "fi"
             ],
@@ -238,7 +217,7 @@
             "kind": "stream"
         },
         "execute": {
-            "command": "./kaon-get-slurm-status.sh {LOCAL_RUN}/{art_dir}",
+            "command": "./kaon-get-slurm-status.sh $LOCAL_RUN/{art_dir}",
             "return-properties": [
                 "file",
                 "status"
@@ -307,7 +286,7 @@
                 "interpolate": "{art_dir}/eigs_mod/{ens_name}.3d.eigs.n{default_num_vecs}.mod{cfg_num}"
             },
             "eig_default_run": {
-                "interpolate": "{LOCAL_RUN}/{art_dir}/eigs_mod/eigs.cnf{cfg_num}.n{default_num_vecs}.sf{smear_fact}.sn{smear_num}"
+                "interpolate": "$LOCAL_RUN/{art_dir}/eigs_mod/eigs.cnf{cfg_num}.n{default_num_vecs}.sf{smear_fact}.sn{smear_num}"
             },
             "kind": [
                 "configuration"

@@ -112,6 +112,22 @@
             {
                 "option-name": "prop_4V100_mg_parms",
                 "option-doc": "MG inverter options when computing propagators in 4 V100 nodes; see chroma_python's --mg_parameters option"
+            },
+            {
+                "option-name": "cfg_dir",
+                "option-doc": "configurations root directory relative to the cache"
+            },
+            {
+                "option-name": "art_dir",
+                "option-doc": "propagators, genprops... root directory relative to the cache"
+            },
+            {
+                "option-name": "phase",
+                "option-doc": "eigenvector phasing in the z-direction"
+            },
+            {
+                "option-name": "t_source",
+                "option-doc": "propagator and genprop first time-slice"
             }
         ],
         "finalize": {
@@ -120,13 +136,13 @@
         "id": "option-{option-name}"
     },
     {
-        "name": "General parameters for 48^3x96 lattices",
+        "name": "General parameters for 32^3x64 lattices",
         "modify": [
             {
                 "kind": "meta-ensemble",
-                "meta_ens_name": "cl21_48_96",
-                "space_size": "48",
-                "time_size": "96",
+                "meta_ens_name": "cl21_32_64",
+                "space_size": "32",
+                "time_size": "64",
                 "default_num_vecs": "128",
                 "eig_knl_geom": "2 2 1 1",
                 "eig_knl_maxtime": "8:00:00",
@@ -138,7 +154,7 @@
                     "multiple-lines",
                     "AntiPeriodicT True",
                     "MGLevels 3",
-                    "Blocking 4,4,3,3:2,2,2,2",
+                    "Blocking 4,4,4,4:2,2,2,2",
                     "NullVecs 24:32",
                     "NullSolverMaxIters 800:800",
                     "NullSolverRsdTarget 5e-6:5e-6",
@@ -188,7 +204,7 @@
                     "RsdTarget 1.0e-7",
                     "AntiPeriodicT True",
                     "SolverType GCR",
-                    "Blocking 3,3,4,4:2,2,2,2",
+                    "Blocking 4,4,4,4:2,2,2,2",
                     "NullVectors 24:32",
                     "SmootherType CA_GCR:CA_GCR:CA_GCR",
                     "SmootherTol 0.25:0.25:0.25",
@@ -257,7 +273,7 @@
                     "RsdTarget 1.0e-7",
                     "AntiPeriodicT True",
                     "SolverType GCR",
-                    "Blocking 3,3,4,4:2,2,2,2",
+                    "Blocking 4,4,4,4:2,2,2,2",
                     "NullVectors 24:32",
                     "SmootherType CA_GCR:CA_GCR:CA_GCR",
                     "SmootherTol 0.25:0.25:0.25",
@@ -273,16 +289,16 @@
         "id": "meta-ensemble-{meta_ens_name}"
     },
     {
-        "name": "Parameters for cl21_48_96_b6p3_m0p2416_m0p2050",
+        "name": "Parameters for cl21_32_64_b6p3_m0p2350_m0p2050",
         "select": {
-            "meta_ens_name": "cl21_48_96"
+            "meta_ens_name": "cl21_32_64"
         },
         "modify": [
             {
                 "kind": "ensemble",
-                "ens_name": "cl21_48_96_b6p3_m0p2416_m0p2050",
-                "beta": "-0.2416",
-                "light_mass": "-0.2416",
+                "ens_name": "cl21_32_64_b6p3_m0p2350_m0p2050",
+                "beta": "6.3",
+                "light_mass": "-0.2350",
                 "strange_mass": "-0.2050",
                 "clover": "1.20536588031793",
                 "smear_fact": "0.08",
@@ -291,5 +307,69 @@
             }
         ],
         "id": "ensemble-{ens_name}"
+    },
+    {
+        "name": "streams for ensemble cl21_32_64_b6p3_m0p2350_m0p2050",
+        "select": {
+            "kind": "ensemble",
+            "ens_name": "cl21_32_64_b6p3_m0p2350_m0p2050"
+        },
+        "modify": {
+            "cfg_dir": [
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-10700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-10900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-11700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-11900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-12700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-12900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-13700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-13900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-14700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-14900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-15700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-15900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-16700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-16900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-1700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-17700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-17900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-18700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-18900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-1900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-19700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-19900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-20070",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-2700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-2900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-3900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-4700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-4900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-5700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-5900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-6700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-6900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-7700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-7900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-8700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-8900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-900",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-9700",
+                "cl21_32_64_b6p3_m0p2350_m0p2050-streams/cl21_32_64_b6p3_m0p2350_m0p2050-9900"
+            ],
+            "kind": "stream"
+        },
+        "id": "stream-{cfg_dir}"
+    },
+    {
+        "name": "sets art_dir for ensemble cl21_32_64_b6p3_m0p2350_m0p2050",
+        "select": {
+            "kind": "stream",
+            "ens_name": "cl21_32_64_b6p3_m0p2350_m0p2050",
+            "cfg_dir": {
+                "copy-to": "art_dir"
+            }
+        },
+        "id": "stream-{art_dir}"
     }
 ]

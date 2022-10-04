@@ -1,4 +1,4 @@
-JSON_FILES := ensembles.json facilities.json streams.json artifacts.json summary.json
+JSON_FILES := ensembles.json facilities.json streams.json artifacts.json summary.json ensembles_32_64.json
 PYTHON_FILES := kaon.py create_chroma_job.py
 BASH_FILES := kaon-create-jobs-eigs.sh kaon-get-files-transitioning-to-cache.sh kaon-get-from-tape-remote.sh kaon-get-promises.sh kaon-get-slurm-status.sh kaon-launch-jobs.sh kaon-promise.sh kaon-remote-cp.sh kaon-rm-promise.sh
 PYTHON ?= python
